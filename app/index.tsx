@@ -7,14 +7,15 @@ import {
   Platform,
   Image,
   TouchableOpacity,
-  ImageResizeMode
+  ImageResizeMode,
+  ActivityIndicator
 } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import * as SplashScreenModule from 'expo-splash-screen';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
 import { ToolBar } from '@/components/ToolBar/ToolBar';
-import { DRAW_MODES, DrawingLine, Point, ShapeData, AlertConfig, COLORS } from '@/types';
+import { DRAW_MODES, DrawingLine, Point, ShapeData, AlertConfig, COLORS, AI_STYLES } from '@/types';
 import Svg, { 
   Path, 
   Rect, 
@@ -57,14 +58,14 @@ export default function DrawingScreen() {
 
   const [appIsReady, setAppIsReady] = useState(false);
 
+  // AI transformation
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const [aiProcessedImage, setAiProcessedImage] = useState<string | null>(null);
+
   // Splash screen
   useEffect(() => {
     async function prepareApp() {
       try {
-        // Herhangi bir veri yükleme işlemi yapılabilir
-        // Örnek: Renk paletlerini veya son kullanıcı çizimlerini yükleme
-        
-        // Yükleme işlemi için simüle edilmiş bekleme süresi (isteğe bağlı)
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.warn('App loading error', e);
@@ -247,12 +248,22 @@ export default function DrawingScreen() {
   };
 
   // Alert Helper Function
-  const showAlert = (title: string, message: string, buttons = [{ text: t('save.successTitle'), onPress: () => {}, style: 'default' as const }]) => {
+  const showAlert = (title: string, message: string, buttons = [{ text: t('ok'), onPress: () => {}, style: 'default' as const }]) => {
     setAlertConfig({
       visible: true,
       title,
       message,
       buttons,
+      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+    });
+  };
+
+  const showAlertNoButtons = (title: string, message: string) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons: [],
       onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
     });
   };
@@ -533,14 +544,71 @@ export default function DrawingScreen() {
               strokeLinejoin="round"
               fill="none"
             />
-          );
-        
-        // Diğer şekiller için gerekli kodları ekleyin
-        
+          );        
         default:
           return null;
       }
     });
+  };
+
+  // AI Generate
+  const handleApplyAIStyle = async (styleId: string) => {
+    try {
+      setIsAIProcessing(true);
+      
+      const uri = await captureRef(canvasRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+      // Api endpoint 
+
+      showAlertNoButtons(
+        t('ai.processingTitle'), 
+        t('ai.processingMessage', { style: AI_STYLES.find(style => style.id === styleId)?.name || 'Unknown' })
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setAiProcessedImage(uri);
+      
+      setIsAIProcessing(false);
+      
+      showAlert(
+        t('ai.successTitle'), 
+        t('ai.successMessage'),
+        [
+          {
+            text: t('ok'),
+            onPress: () => setAiProcessedImage(null),
+            style: 'default' as const
+          }
+        ]
+      );
+    } catch (error) {
+      setIsAIProcessing(false);
+      showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+    }
+  };
+
+  // AI Generate Save Image
+  const handleSaveAIImage = async () => {
+    if (!aiProcessedImage) return;
+    
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        showAlert(t('save.errorTitle'), t('save.errorMessage'));
+        return;
+      }
+      
+      await MediaLibrary.createAssetAsync(aiProcessedImage);
+      setAiProcessedImage(null);
+      showAlert(t('save.successTitle'), t('save.successMessage'));
+    } catch (error) {
+      showAlert(t('save.errorTitle'), t('save.errorMessage'));
+    }
   };
 
   return (
@@ -565,8 +633,21 @@ export default function DrawingScreen() {
               resizeMode={imageFitMode as ImageResizeMode}
             />
           )}
+          
+          {/* AI işlenmiş görüntü (varsa) */}
+          {aiProcessedImage && (
+            <Image 
+              source={{ uri: aiProcessedImage }} 
+              style={styles.aiProcessedImage}
+              resizeMode="contain"
+            />
+          )}
+          
           <Svg 
-            style={styles.svgCanvas} 
+            style={[
+              styles.svgCanvas,
+              (isAIProcessing || aiProcessedImage) && { opacity: 0 }
+            ]} 
             width="100%" 
             height="100%"
           >
@@ -591,6 +672,16 @@ export default function DrawingScreen() {
         </View>
       )}
       
+      {/* AI Processing Indicator */}
+      {isAIProcessing && (
+        <View style={styles.aiProcessingContainer}>
+          <ThemedText style={styles.aiProcessingText}>
+            {t('ai.processingMessage')}
+          </ThemedText>
+          <ActivityIndicator size="large" color="#FFC107" />
+        </View>
+      )}
+      
       <ToolBar
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
@@ -607,6 +698,7 @@ export default function DrawingScreen() {
         onShare={handleShare}
         onClear={handleClearRequest}
         onAddImage={handleAddImage}
+        onApplyAIStyle={handleApplyAIStyle}
       />
       
       <CustomAlert
@@ -725,5 +817,31 @@ const styles = StyleSheet.create({
   imageControlText: {
     fontSize: 24,
     fontWeight: 'bold',
-  }
+  },
+  aiProcessedImage: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 10, // SVG üzerinde göster
+  },
+  aiProcessingContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -100 }, { translateY: -50 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  aiProcessingText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
 }); 

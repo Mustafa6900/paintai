@@ -5,29 +5,15 @@ import {
   View, 
   Animated,
   LayoutChangeEvent,
+  Image,
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ColorPalette } from './ColorPalette';
 import { SettingsMenu } from './SettingsMenu';
-import { DRAW_MODES, SHAPES } from '@/types';
-
-interface ToolBarProps {
-  onUndo: () => void;
-  onToggleTool: (isPencil: boolean, size?: number) => void;
-  currentDrawMode: string;
-  setCurrentDrawMode: (mode: string) => void;
-  selectedColor: string;
-  setSelectedColor: (color: string) => void;
-  colors: string[];
-  brushSize: number;
-  visible: boolean;
-  selectedShape: string | null;
-  setSelectedShape: (shape: string | null) => void;
-  onSave: () => void;
-  onShare: () => void;
-  onClear: () => void;
-  onAddImage: () => void;
-}
+import { DRAW_MODES, SHAPES, AI_STYLES, AIStyle, ToolBarProps, imageLoadingCache } from '@/types';
+import { t } from '@/locales';
 
 export function ToolBar({
   onUndo,
@@ -44,13 +30,15 @@ export function ToolBar({
   onSave,
   onShare,
   onClear,
-  onAddImage
+  onAddImage,
+  onApplyAIStyle = () => {}
 }: ToolBarProps) {
   const [showPencilSizes, setShowPencilSizes] = useState(false);
   const [showEraserSizes, setShowEraserSizes] = useState(false);
   const [showColorPalette, setShowColorPalette] = useState(false);
   const [showShapes, setShowShapes] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAIStyles, setShowAIStyles] = useState(false);
   
   // Button Ref
   const pencilButtonRef = useRef<View>(null);
@@ -58,6 +46,7 @@ export function ToolBar({
   const colorButtonRef = useRef<View>(null);
   const shapeButtonRef = useRef<View>(null);
   const settingsButtonRef = useRef<View>(null);
+  const aiButtonRef = useRef<View>(null);
   
   // Button Positions
   const [pencilButtonTop, setPencilButtonTop] = useState(0);
@@ -65,6 +54,7 @@ export function ToolBar({
   const [colorButtonTop, setColorButtonTop] = useState(0);
   const [shapeButtonTop, setShapeButtonTop] = useState(0);
   const [settingsButtonTop, setSettingsButtonTop] = useState(0);
+  const [aiButtonTop, setAiButtonTop] = useState(0);
   
   // Animation Values
   const pencilSizeAnimation = useRef(new Animated.Value(0)).current;
@@ -72,6 +62,7 @@ export function ToolBar({
   const colorPaletteAnimation = useRef(new Animated.Value(0)).current;
   const shapesAnimation = useRef(new Animated.Value(0)).current;
   const settingsAnimation = useRef(new Animated.Value(0)).current;
+  const aiStylesAnimation = useRef(new Animated.Value(0)).current;
   
   // Pencil and Eraser Sizes
   const toolSizes = [3, 6, 8, 10, 12, 15, 20, 25, 30];
@@ -83,6 +74,7 @@ export function ToolBar({
     setShowColorPalette(false);
     setShowShapes(false);
     setShowSettings(false);
+    setShowAIStyles(false);
   };
   
   // When the drawing mode changes, open/close the appropriate menus
@@ -130,7 +122,13 @@ export function ToolBar({
       duration: 200,
       useNativeDriver: false
     }).start();
-  }, [showPencilSizes, showEraserSizes, showColorPalette, showShapes, showSettings]);
+    
+    Animated.timing(aiStylesAnimation, {
+      toValue: showAIStyles ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false
+    }).start();
+  }, [showPencilSizes, showEraserSizes, showColorPalette, showShapes, showSettings, showAIStyles]);
   
   // Layout Functions - Get Positions
   const onPencilButtonLayout = (event: LayoutChangeEvent) => {
@@ -156,6 +154,11 @@ export function ToolBar({
   const onSettingsButtonLayout = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
     setSettingsButtonTop(y + height/2 - 20);
+  };
+  
+  const onAiButtonLayout = (event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    setAiButtonTop(y + height/2 - 20);
   };
   
   // Visual Size Scale
@@ -236,6 +239,59 @@ export function ToolBar({
     setSelectedShape(shapeId);
     setCurrentDrawMode(DRAW_MODES.SHAPE);
     closeAllMenus();
+  };
+  
+  const handleAIPress = () => {
+    closeAllMenus();
+    setShowAIStyles(!showAIStyles);
+  };
+  
+  const selectAIStyle = (styleId: string) => {
+    onApplyAIStyle(styleId);
+    closeAllMenus();
+  };
+  
+  const AIStyleOption = ({ style, onSelect }: { style: AIStyle, onSelect: () => void }) => {
+    const cachedState = imageLoadingCache[style.id] || { loaded: false, error: false };
+    
+    const [isLoading, setIsLoading] = useState(!cachedState.loaded);
+    const [hasError, setHasError] = useState(cachedState.error);
+
+    return (
+      <TouchableOpacity 
+        key={`ai-style-${style.id}`}
+        style={styles.aiStyleOption} 
+        onPress={onSelect}
+      >
+        {isLoading && (
+          <View style={styles.aiStyleIconPlaceholder}>
+            <ActivityIndicator size="large" color="#FFC107" />
+          </View>
+        )}
+        <Image 
+          source={style.icon} 
+          style={[
+            styles.aiStyleIcon,
+            isLoading ? { height: 0 } : null
+          ]} 
+          resizeMode="cover"
+          onLoad={() => {
+            imageLoadingCache[style.id] = { loaded: true, error: false };
+            setIsLoading(false);
+          }}
+          onError={() => {
+            imageLoadingCache[style.id] = { loaded: true, error: true };
+            setIsLoading(false);
+            setHasError(true);
+          }}
+        />
+        {hasError && (
+          <View style={styles.aiStyleIconFallback}>
+            <ThemedText style={styles.aiStyleName}>{style.name}</ThemedText>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
   
   return (
@@ -376,11 +432,51 @@ export function ToolBar({
         onAddImage={onAddImage}
       />
       
+      {/* AI Styles Menu */}
+      <Animated.View 
+        style={[
+          styles.aiStylesMenu,
+          {
+            opacity: aiStylesAnimation,
+            width: aiStylesAnimation.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 250]
+            }),
+            right: 55,
+            top: aiButtonTop,
+            display: showAIStyles ? 'flex' : 'none'
+          }
+        ]}
+      >
+        <ScrollView contentContainerStyle={styles.aiStylesWrapper}>
+          {AI_STYLES.map((style) => (
+            <AIStyleOption 
+              key={`ai-style-option-${style.id}`}
+              style={style} 
+              onSelect={() => selectAIStyle(style.id)}
+            />
+          ))}
+        </ScrollView>
+      </Animated.View>
+      
       {/* Main Toolbar */}
       <Animated.View style={[
         styles.container,
         { opacity: visible ? 1 : 0 }
       ]}>
+        <TouchableOpacity 
+          ref={aiButtonRef}
+          onLayout={onAiButtonLayout}
+          style={styles.aiToolButton} 
+          onPress={handleAIPress}
+        >
+          <Image 
+            source={require('@/assets/ai-icon.png')} 
+            style={styles.aiButtonIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        
         <TouchableOpacity 
           ref={settingsButtonRef}
           onLayout={onSettingsButtonLayout}
@@ -567,6 +663,77 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     borderWidth: 2,
     borderColor: '#555',
+  },
+  aiToolButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 46,
+    height: 46,
+    backgroundColor: '#E1F5FE',
+    borderRadius: 23,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#29B6F6',
+  },
+  aiButtonIcon: {
+    width: 32,
+    height: 32,
+  },
+  aiStylesMenu: {
+    position: 'absolute',
+    backgroundColor: '#E1F5FE',
+    borderRadius: 15,
+    padding: 5,
+    borderWidth: 2,
+    borderColor: '#29B6F6',
+    marginRight: 10,
+    overflow: 'hidden',
+    maxHeight: 300,
+  },
+  aiStylesWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 5,
+  },
+  aiStyleOption: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+    height: 60,
+    margin: 5,
+  },
+  aiStyleIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  aiStyleIconPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#FFECB3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFC107',
+  },
+  aiStyleIconFallback: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#29B6F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#0288D1',
+  },
+  aiStyleName: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    padding: 2,
   }
 });
 

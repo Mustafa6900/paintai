@@ -1,4 +1,25 @@
-// Ortak tip tanımlamaları
+import { t } from '@/locales';
+
+// Common type definitions
+
+export interface ToolBarProps {
+  onUndo: () => void;
+  onToggleTool: (isPencil: boolean, size?: number) => void;
+  currentDrawMode: string;
+  setCurrentDrawMode: (mode: string) => void;
+  selectedColor: string;
+  setSelectedColor: (color: string) => void;
+  colors: string[];
+  brushSize: number;
+  visible: boolean;
+  selectedShape: string | null;
+  setSelectedShape: (shape: string | null) => void;
+  onSave: () => void;
+  onShare: () => void;
+  onClear: () => void;
+  onAddImage: () => void;
+  onApplyAIStyle?: (styleId: string) => void;
+}
 
 export interface Point {
   x: number;
@@ -38,7 +59,6 @@ export interface AlertConfig {
   onDismiss: () => void;
 }
 
-// Çizim modları
 export const DRAW_MODES = {
   PENCIL: 'pencil',
   ERASER: 'eraser',
@@ -68,3 +88,59 @@ export const COLORS = [
   '#FFDAB9', // Peach
   '#A52A2A', '#8B4513', '#CD853F'  // Brown shades
 ];
+
+export interface AIStyle {
+  id: string;
+  name: string;
+  icon: any;
+}
+
+export const AI_STYLES: AIStyle[] = [
+  {
+    id: 'pixar',
+    name: 'Pixar',
+    icon: require('@/assets/ai-styles/pixar.webp'),
+  },
+  {
+    id: 'anime',
+    name: 'Anime',
+    icon: require('@/assets/ai-styles/anime.webp'),
+  },
+  {
+    id: 'fantasy',
+    name: 'Fantasy',
+    icon: require('@/assets/ai-styles/fantasy.webp'),
+  },
+  {
+    id: 'watercolor',
+    name: 'Watercolor',
+    icon: require('@/assets/ai-styles/watercolor.webp'),
+  },
+  {
+    id: 'storybook',
+    name: 'Storybook',
+    icon: require('@/assets/ai-styles/storybook.webp'),
+  },
+  {
+    id: 'comic',
+    name: 'Comic',
+    icon: require('@/assets/ai-styles/comic.webp'),
+  },
+  {
+    id: 'cartoon',
+    name: 'Cartoon',
+    icon: require('@/assets/ai-styles/cartoon.webp'),
+  },
+  {
+    id: 'cyberpunk',
+    name: 'Cyberpunk',
+    icon: require('@/assets/ai-styles/cyberpunk.webp'),
+  },
+  {
+    id: 'pencil',
+    name: 'Pencil',
+    icon: require('@/assets/ai-styles/pencil.webp'),
+  }
+];
+
+export const imageLoadingCache: Record<string, { loaded: boolean, error: boolean }> = {};

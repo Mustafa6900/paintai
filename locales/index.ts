@@ -1,4 +1,5 @@
 interface TextContent {
+  ok: string;
   save: {
     title: string;
     successTitle: string;
@@ -34,6 +35,17 @@ interface TextContent {
     confirm: string;
     cancel: string;
   };
+  ai: {
+    title: string;
+    processingTitle: string;
+    processingMessage: string;
+    successTitle: string;
+    successMessage: string;
+    errorTitle: string;
+    errorMessage: string;
+    saveResult: string;
+    discard: string;
+  };
 }
 
 interface Localization {
@@ -43,6 +55,7 @@ interface Localization {
 
 export const texts: Localization = {
   tr: {
+    ok: 'Tamam',
     save: {
       title: 'Kaydet',
       successTitle: 'Başarılı',
@@ -77,9 +90,21 @@ export const texts: Localization = {
       confirmMessage: 'Tüm çizimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       confirm: 'Evet, temizle',
       cancel: 'İptal'
+    },
+    ai: {
+      title: 'AI Dönüşüm',
+      processingTitle: 'İşleniyor',
+      processingMessage: '{style} stilinde işleniyor...',
+      successTitle: 'Tamamlandı',
+      successMessage: 'AI dönüşümü başarıyla tamamlandı!',
+      errorTitle: 'Hata',
+      errorMessage: 'AI dönüşümü sırasında bir hata oluştu.',
+      saveResult: 'Sonucu Kaydet',
+      discard: 'İptal Et',
     }
   },
   en: {
+    ok: 'OK',
     save: {
       title: 'Save',
       successTitle: 'Success',
@@ -114,6 +139,17 @@ export const texts: Localization = {
       confirmMessage: 'Are you sure you want to clear all drawings? This action cannot be undone.',
       confirm: 'Yes, clear',
       cancel: 'Cancel'
+    },
+    ai: {
+      title: 'AI Transformation',
+      processingTitle: 'Processing',
+      processingMessage: 'Processing in {style} style...',
+      successTitle: 'Completed',
+      successMessage: 'AI transformation completed successfully!',
+      errorTitle: 'Error',
+      errorMessage: 'AI transformation error!',
+      saveResult: 'Save Result',
+      discard: 'Discard',
     }
   }
 };
@@ -128,7 +164,7 @@ export const setLanguage = (lang: 'tr' | 'en') => {
   currentLanguage = lang;
 };
 
-export const t = (key: string) => {
+export const t = (key: string, params?: Record<string, string>) => {
   const keys = key.split('.');
   let value: any = texts[currentLanguage as keyof typeof texts];
 
@@ -137,6 +173,12 @@ export const t = (key: string) => {
       return key;
     }
     value = value[k];
+  }
+
+  if (params && typeof value === 'string') {
+    Object.keys(params).forEach(paramKey => {
+      value = value.replace(`{${paramKey}}`, params[paramKey]);
+    });
   }
 
   return value;
