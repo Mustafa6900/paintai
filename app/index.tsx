@@ -5,7 +5,9 @@ import {
   PanResponder, 
   Share, 
   Platform,
-  Image
+  Image,
+  TouchableOpacity,
+  ImageResizeMode
 } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import * as SplashScreenModule from 'expo-splash-screen';
@@ -24,6 +26,7 @@ import Svg, {
 import { CustomAlert } from '@/components/CustomAlert';
 import { t } from '@/locales';
 import * as ImagePicker from 'expo-image-picker';
+import { ThemedText } from '@/components/ThemedText';
 
 SplashScreenModule.preventAutoHideAsync();
 
@@ -47,6 +50,8 @@ export default function DrawingScreen() {
     onDismiss: () => {}
   });
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [imageScale, setImageScale] = useState(1);
+  const [imageFitMode, setImageFitMode] = useState('contain');
 
   const canvasRef = useRef(null);
 
@@ -56,6 +61,7 @@ export default function DrawingScreen() {
     setCurrentLine([]);
     setShapes([]);
     setCurrentShape(null);
+    setBackgroundImage(null);
   };
 
   // Undo function - separate control for shape and line
@@ -64,6 +70,8 @@ export default function DrawingScreen() {
       setShapes(prev => prev.slice(0, -1));
     } else if (lines.length > 0) {
       setLines(prev => prev.slice(0, -1));
+    } else if (backgroundImage) {
+      setBackgroundImage(null);
     }
   };
 
@@ -328,6 +336,8 @@ export default function DrawingScreen() {
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setBackgroundImage(result.assets[0].uri);
+        setImageScale(1);
+        setImageFitMode('cover');
         showAlert(t('imageUpload.successTitle'), t('imageUpload.successMessage'));
       }
     } catch (error) {
@@ -336,6 +346,14 @@ export default function DrawingScreen() {
         t('imageUpload.errorMessage')
       );
     }
+  };
+
+  const handleImageZoom = (scale) => {
+    setImageScale(scale);
+  };
+
+  const toggleImageFitMode = () => {
+    setImageFitMode(prevMode => prevMode === 'contain' ? 'cover' : 'contain');
   };
 
   const handleToggleTool = (isPencil: boolean, size?: number) => {    
@@ -505,8 +523,13 @@ export default function DrawingScreen() {
           {backgroundImage && (
             <Image 
               source={{ uri: backgroundImage }} 
-              style={styles.backgroundImage}
-              resizeMode="contain"
+              style={[
+                styles.backgroundImage,
+                { 
+                  transform: [{ scale: imageScale }],
+                }
+              ]}
+              resizeMode={imageFitMode as ImageResizeMode}
             />
           )}
           <Svg 
@@ -519,6 +542,21 @@ export default function DrawingScreen() {
           </Svg>
         </View>
       </View>
+      
+      {/* Image control buttons - if needed */}
+      {backgroundImage && (
+        <View style={styles.imageControlsContainer}>
+          <TouchableOpacity style={styles.imageControlButton} onPress={() => handleImageZoom(imageScale + 0.1)}>
+            <ThemedText style={styles.imageControlText}>+</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.imageControlButton} onPress={() => handleImageZoom(Math.max(0.5, imageScale - 0.1))}>
+            <ThemedText style={styles.imageControlText}>-</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.imageControlButton} onPress={toggleImageFitMode}>
+            <ThemedText style={styles.imageControlText}>📏</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
       
       <ToolBar
         onUndo={handleUndo}
@@ -633,4 +671,26 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: 1,
   },
+  imageControlsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    flexDirection: 'row',
+    zIndex: 10,
+  },
+  imageControlButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 193, 7, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#FFB300',
+  },
+  imageControlText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  }
 }); 
