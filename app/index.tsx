@@ -59,6 +59,7 @@ export default function DrawingScreen() {
   const toolbarHeight = useRef(new Animated.Value(1)).current;
   const [headerVisible, setHeaderVisible] = useState(true);
   const [isPencilActive, setIsPencilActive] = useState(true);
+  const [recentPencilSizes, setRecentPencilSizes] = useState([5, 10, 15]);
   
   const colors = [
     '#000000', '#FFFFFF', '#808080', // Siyah, Beyaz, Gri
@@ -276,9 +277,46 @@ export default function DrawingScreen() {
     }).start();
   }, [toolbarVisible]);
 
-  const handleToggleTool = () => {
-    setIsPencilActive(!isPencilActive);
-    // Kalem ve silgi arasında geçiş
+  const handleToggleTool = (isPencil: boolean, size?: number) => {
+    setIsPencilActive(isPencil);
+    
+    // Boyut değişimi varsa uygula
+    if (size) {
+      setBrushSize(size);
+      
+      // Eğer kalem seçildiyse ve boyut değiştiyse, son kullanılan boyutları güncelle
+      if (isPencil) {
+        updateRecentPencilSizes(size);
+      }
+    }
+    
+    // Renk değişimi (silgi için beyaz)
+    if (!isPencil) {
+      // Silgi seçildiyse arkaplan rengi olarak beyazı seç
+      setSelectedColor('#FFFFFF');
+    } else {
+      // Kalem seçildiyse en son seçilen rengi kullan veya varsayılan siyah
+      if (selectedColor === '#FFFFFF') {
+        setSelectedColor('#000000');
+      }
+    }
+  };
+  
+  // Son kullanılan kalem boyutlarını güncelleme
+  const updateRecentPencilSizes = (newSize: number) => {
+    // Eğer boyut zaten listede varsa, listenin en başına taşı
+    if (recentPencilSizes.includes(newSize)) {
+      const newSizes = [
+        newSize,
+        ...recentPencilSizes.filter(size => size !== newSize)
+      ].slice(0, 3);
+      
+      setRecentPencilSizes(newSizes);
+    } else {
+      // Yeni boyutu en başa ekle ve sadece 3 boyut tut
+      const newSizes = [newSize, ...recentPencilSizes].slice(0, 3);
+      setRecentPencilSizes(newSizes);
+    }
   };
 
   return (
@@ -315,6 +353,8 @@ export default function DrawingScreen() {
         onToggleTool={handleToggleTool}
         isPencilActive={isPencilActive}
         visible={!headerVisible}
+        currentSize={brushSize}
+        recentPencilSizes={recentPencilSizes}
       />
     </ThemedView>
   );
