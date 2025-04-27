@@ -66,20 +66,6 @@ interface AlertConfig {
 }
 
 export default function DrawingScreen() {
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreenModule.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
   const [lines, setLines] = useState<DrawingLine[]>([]);
   const [currentLine, setCurrentLine] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<ShapeData[]>([]);
