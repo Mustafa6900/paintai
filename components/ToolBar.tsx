@@ -36,7 +36,7 @@ interface ToolBarProps {
 
   isPencilActive: boolean;
   visible: boolean;
-  currentSize: number;
+  brushSize: number;
   recentPencilSizes: number[];
     
   selectedColor: string;
@@ -57,7 +57,7 @@ export function ToolBar({
   onUndo, 
   onToggleTool, 
   visible,
-  currentSize,
+  brushSize,
   selectedColor,
   colors,
   setSelectedColor,
@@ -334,7 +334,7 @@ export function ToolBar({
                 key={`pencil-${index}`}
                 style={[
                   styles.sizeButton, 
-                  size === currentSize && currentDrawMode === DRAW_MODES.PENCIL ? styles.activeSizeButton : null
+                  size === brushSize && currentDrawMode === DRAW_MODES.PENCIL ? styles.activeSizeButton : null
                 ]} 
                 onPress={() => selectPencilSize(size)}
               >
@@ -378,7 +378,7 @@ export function ToolBar({
                 key={`eraser-${index}`}
                 style={[
                   styles.sizeButton,
-                  size === currentSize && currentDrawMode === DRAW_MODES.ERASER ? styles.activeSizeButton : null
+                  size === brushSize && currentDrawMode === DRAW_MODES.ERASER ? styles.activeSizeButton : null
                 ]} 
                 onPress={() => selectEraserSize(size)}
               >
@@ -432,6 +432,7 @@ export function ToolBar({
       </Animated.View>
       
       {/* Shapes Menu */}
+      {/* 
       <Animated.View 
         style={[
           styles.shapesMenu,
@@ -464,7 +465,8 @@ export function ToolBar({
           </View>
         </ScrollView>
       </Animated.View>
-      
+      */}
+
       {/* Main Toolbar */}
       <Animated.View style={[
         styles.container,
@@ -523,6 +525,8 @@ export function ToolBar({
           ]} />
         </TouchableOpacity>
         
+        {/* Shape Button */}
+        {/* 
         <TouchableOpacity 
           ref={shapeButtonRef}
           onLayout={onShapeButtonLayout}
@@ -534,6 +538,7 @@ export function ToolBar({
         >
           <ThemedText style={styles.toolButtonIcon}>📐</ThemedText>
         </TouchableOpacity>
+        */}
       
       </Animated.View>
     </View>
