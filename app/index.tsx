@@ -64,7 +64,7 @@ export default function DrawingScreen() {
     setBackgroundImage(null);
   };
 
-  // Undo function - separate control for shape and line
+  // Undo function
   const handleUndo = () => {
     if (shapes.length > 0) {
       setShapes(prev => prev.slice(0, -1));
@@ -348,16 +348,18 @@ export default function DrawingScreen() {
     }
   };
 
-  const handleImageZoom = (scale) => {
+  // Image zoom function
+  const handleImageZoom = (scale: number) => {
     setImageScale(scale);
   };
 
+  // Image fit mode toggle
   const toggleImageFitMode = () => {
     setImageFitMode(prevMode => prevMode === 'contain' ? 'cover' : 'contain');
   };
 
+  // Tool toggle function
   const handleToggleTool = (isPencil: boolean, size?: number) => {    
-    // If size change, apply
     if (size) {
       setBrushSize(size);
       
@@ -368,13 +370,11 @@ export default function DrawingScreen() {
     
     // Color change (for eraser, white)
     if (!isPencil) {
-      // Silgiye geçerken, mevcut rengi kaydet (beyaz değilse)
       if (selectedColor !== '#FFFFFF') {
         setLastPencilColor(selectedColor);
       }
       setSelectedColor('#FFFFFF');
     } else {
-      // Kaleme geçerken, önceki kalem rengini geri yükle
       if (selectedColor === '#FFFFFF') {
         setSelectedColor(lastPencilColor);
       }
@@ -391,16 +391,14 @@ export default function DrawingScreen() {
       
       setRecentPencilSizes(newSizes);
     } else {
-      // Yeni boyutu en başa ekle ve sadece 3 boyut tut
       const newSizes = [newSize, ...recentPencilSizes].slice(0, 3);
       setRecentPencilSizes(newSizes);
     }
   };
 
-  // Renk seçme fonksiyonunu da güncelleyelim
+  // Color change function
   const handleColorChange = (color: string) => {
     setSelectedColor(color);
-    // Kalem modunda yeni bir renk seçildiğinde, son rengi de güncelle
     if (currentDrawMode === DRAW_MODES.PENCIL) {
       setLastPencilColor(color);
     }
@@ -543,7 +541,7 @@ export default function DrawingScreen() {
         </View>
       </View>
       
-      {/* Image control buttons - if needed */}
+      {/* Image control buttons */}
       {backgroundImage && (
         <View style={styles.imageControlsContainer}>
           <TouchableOpacity style={styles.imageControlButton} onPress={() => handleImageZoom(imageScale + 0.1)}>
