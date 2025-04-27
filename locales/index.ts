@@ -1,4 +1,13 @@
 interface TextContent {
+  save: {
+    title: string;
+  };
+  share: {
+    title: string;
+  };
+  clear: {
+    title: string;
+  };
   confirmClear: {
     title: string;
     message: string;
@@ -12,13 +21,6 @@ interface TextContent {
   saveError: {
     title: string;
     message: string;
-  };
-  clearConfirm: {
-    title: string;
-    message: string;
-  };
-  clearCancel: {
-    title: string;
   };
   shareSuccess: {
     title: string;
@@ -43,6 +45,15 @@ interface Localization {
 
 export const texts: Localization = {
   tr: {
+    save: {
+      title: 'Kaydet'
+    },
+    share: {
+      title: 'Paylaş'
+    },
+    clear: {
+      title: 'Temizle'
+    },
     confirmClear: {
       title: 'Tüm çizimleri temizle',
       message: 'Tüm çizimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
@@ -56,13 +67,6 @@ export const texts: Localization = {
     saveError: {
       title: 'Kaydetme Hatası',
       message: 'Çizim kaydedilemedi.'
-    },
-    clearConfirm: {
-      title: 'Temizleme Onayı',
-      message: 'Tüm çizim silinecek. Devam etmek istiyor musunuz?'
-    },
-    clearCancel: {
-      title: 'İptal'
     },
     shareSuccess: {
       title: 'Paylaşıldı',
@@ -80,6 +84,15 @@ export const texts: Localization = {
     shareTitle: 'Çizimimi Paylaş'
   },
   en: {
+    save: {
+      title: 'Save'
+    },
+    share: {
+      title: 'Share'
+    },
+    clear: {
+      title: 'Clear'
+    },
     confirmClear: {
       title: 'Clear all drawings',
       message: 'Are you sure you want to clear all drawings? This action cannot be undone.',
@@ -93,13 +106,6 @@ export const texts: Localization = {
     saveError: {
       title: 'Save Error',
       message: 'Drawing could not be saved.'
-    },
-    clearConfirm: {
-      title: 'Clear Confirmation',
-      message: 'All drawings will be deleted. Do you want to continue?'
-    },
-    clearCancel: {
-      title: 'Cancel'
     },
     shareSuccess: {
       title: 'Shared',

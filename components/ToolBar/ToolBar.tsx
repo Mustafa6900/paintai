@@ -1,70 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   TouchableOpacity, 
   View, 
   Animated,
   LayoutChangeEvent,
-  ScrollView,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { t } from '@/locales';
-
-// Drawing modes
-export const DRAW_MODES = {
-  PENCIL: 'pencil',
-  ERASER: 'eraser',
-  SHAPE: 'shape'
-};
-
-const SHAPES = [
-  { id: 'rectangle', name: 'Rectangle', icon: '⬜' },
-  { id: 'circle', name: 'Circle', icon: '⭕' },
-  { id: 'triangle', name: 'Triangle', icon: '🔺' },
-  { id: 'line', name: 'Line', icon: '➖' },
-  { id: 'arrow', name: 'Arrow', icon: '➡️' },
-  { id: 'star', name: 'Star', icon: '⭐' },
-  { id: 'heart', name: 'Heart', icon: '❤️' },
-  { id: 'ellipse', name: 'Ellipse', icon: '🔵' },
-  { id: 'pentagon', name: 'Pentagon', icon: '⬟' },
-  { id: 'hexagon', name: 'Hexagon', icon: '⬢' }
-];
+import { ColorPalette } from './ColorPalette';
+import { SettingsMenu } from './SettingsMenu';
+import { DRAW_MODES, SHAPES } from '@/types';
 
 interface ToolBarProps {
   onUndo: () => void;
   onToggleTool: (isPencil: boolean, size?: number) => void;
-
-  isPencilActive: boolean;
-  visible: boolean;
-  currentSize: number;
-  recentPencilSizes: number[];
-    
-  selectedColor: string;
-  colors: string[];
-  setSelectedColor: (color: string) => void;
-
-  selectedShape: string | null;
-  setSelectedShape: (shape: string | null) => void;
   currentDrawMode: string;
   setCurrentDrawMode: (mode: string) => void;
-
+  selectedColor: string;
+  setSelectedColor: (color: string) => void;
+  colors: string[];
+  brushSize: number;
+  visible: boolean;
+  selectedShape: string | null;
+  setSelectedShape: (shape: string | null) => void;
   onSave: () => void;
   onShare: () => void;
   onClear: () => void;
 }
 
-export function ToolBar({ 
-  onUndo, 
-  onToggleTool, 
-  visible,
-  currentSize,
-  selectedColor,
-  colors,
-  setSelectedColor,
-  selectedShape,
-  setSelectedShape,
+export function ToolBar({
+  onUndo,
+  onToggleTool,
   currentDrawMode,
   setCurrentDrawMode,
+  selectedColor,
+  setSelectedColor,
+  colors,
+  brushSize,
+  visible,
+  selectedShape,
+  setSelectedShape,
   onSave,
   onShare,
   onClear
@@ -75,14 +50,14 @@ export function ToolBar({
   const [showShapes, setShowShapes] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // Buton Ref
+  // Button Ref
   const pencilButtonRef = useRef<View>(null);
   const eraserButtonRef = useRef<View>(null);
   const colorButtonRef = useRef<View>(null);
   const shapeButtonRef = useRef<View>(null);
   const settingsButtonRef = useRef<View>(null);
   
-  // Buton Position
+  // Button Positions
   const [pencilButtonTop, setPencilButtonTop] = useState(0);
   const [eraserButtonTop, setEraserButtonTop] = useState(0);
   const [colorButtonTop, setColorButtonTop] = useState(0);
@@ -90,16 +65,16 @@ export function ToolBar({
   const [settingsButtonTop, setSettingsButtonTop] = useState(0);
   
   // Animation Values
-  const pencilSizeAnimation = new Animated.Value(0);
-  const eraserSizeAnimation = new Animated.Value(0);
-  const colorPaletteAnimation = new Animated.Value(0);
-  const shapesAnimation = new Animated.Value(0);
-  const settingsAnimation = new Animated.Value(0);
+  const pencilSizeAnimation = useRef(new Animated.Value(0)).current;
+  const eraserSizeAnimation = useRef(new Animated.Value(0)).current;
+  const colorPaletteAnimation = useRef(new Animated.Value(0)).current;
+  const shapesAnimation = useRef(new Animated.Value(0)).current;
+  const settingsAnimation = useRef(new Animated.Value(0)).current;
   
-  // Eraser Sizes - Same as Pencil Sizes
-  const pencilSizes = [3, 6, 8, 10, 12, 15, 20, 25, 30];
+  // Pencil and Eraser Sizes
+  const toolSizes = [3, 6, 8, 10, 12, 15, 20, 25, 30];
   
-  // Close All Menus
+  // Close all menus
   const closeAllMenus = () => {
     setShowPencilSizes(false);
     setShowEraserSizes(false);
@@ -182,12 +157,7 @@ export function ToolBar({
   };
   
   // Visual Size Scale
-  const getVisualSize = (size: number, eraser: boolean = false) => {
-    if (eraser) {
-      if (size === 10) return 10;
-      if (size === 20) return 15;
-      if (size === 30) return 20;
-    }
+  const getVisualSize = (size: number) => {
     return Math.min(size, 20);
   };
   
@@ -236,11 +206,6 @@ export function ToolBar({
     setShowSettings(!showSettings);
   };
   
-  // For clearing, confirm dialog
-  const handleClearPress = () => {
-    onClear();
-  };
-  
   // Selection Functions
   const selectPencilSize = (size: number) => {
     onToggleTool(true, size);
@@ -267,50 +232,6 @@ export function ToolBar({
   
   return (
     <View style={styles.mainContainer}>
-
-      {/* Settings Menu */}
-      <Animated.View 
-        style={[
-          styles.settingsMenu,
-          {
-            opacity: settingsAnimation,
-            width: settingsAnimation.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 170]
-            }),
-            right: 55,
-            top: settingsButtonTop,
-            display: showSettings ? 'flex' : 'none'
-          }
-        ]}
-      >
-        <View style={styles.settingsWrapper}>
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            onPress={onSave}
-          >
-            <ThemedText style={styles.settingsButtonIcon}>💾</ThemedText>
-            <ThemedText style={styles.settingsButtonText}>{t('save.title')}</ThemedText>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            onPress={onShare}
-          >
-            <ThemedText style={styles.settingsButtonIcon}>🚀</ThemedText>
-            <ThemedText style={styles.settingsButtonText}>{t('share.title')}</ThemedText>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.settingsButton} 
-            onPress={handleClearPress}
-          >
-            <ThemedText style={styles.settingsButtonIcon}>🗑️</ThemedText>
-            <ThemedText style={styles.settingsButtonText}>{t('clear.title')}</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-
       {/* Pencil Size Menu */}
       <Animated.View 
         style={[
@@ -327,32 +248,29 @@ export function ToolBar({
           }
         ]}
       >
-        <ScrollView style={styles.scrollMenu}>
-          <View style={styles.sizesWrapper}>
-            {pencilSizes.map((size, index) => (
-              <TouchableOpacity 
-                key={`pencil-${index}`}
+        <View style={styles.sizesWrapper}>
+          {toolSizes.map((size, index) => (
+            <TouchableOpacity 
+              key={`pencil-${index}`}
+              style={[
+                styles.sizeButton, 
+                size === brushSize && currentDrawMode === DRAW_MODES.PENCIL ? styles.activeSizeButton : null
+              ]} 
+              onPress={() => selectPencilSize(size)}
+            >
+              <View 
                 style={[
-                  styles.sizeButton, 
-                  size === currentSize && currentDrawMode === DRAW_MODES.PENCIL ? styles.activeSizeButton : null
+                  styles.sizeCircle, 
+                  { 
+                    width: getVisualSize(size), 
+                    height: getVisualSize(size),
+                    backgroundColor: selectedColor
+                  }
                 ]} 
-                onPress={() => selectPencilSize(size)}
-              >
-                <View 
-                  style={[
-                    styles.sizeCircle, 
-                    { 
-                      width: getVisualSize(size), 
-                      height: getVisualSize(size),
-                      borderWidth: 2,
-                      backgroundColor: selectedColor
-                    }
-                  ]} 
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
       </Animated.View>
       
       {/* Eraser Size Menu */}
@@ -371,65 +289,39 @@ export function ToolBar({
           }
         ]}
       >
-        <ScrollView style={styles.scrollMenu}>
-          <View style={styles.sizesWrapper}>
-            {pencilSizes.map((size, index) => (
-              <TouchableOpacity 
-                key={`eraser-${index}`}
+        <View style={styles.sizesWrapper}>
+          {toolSizes.map((size, index) => (
+            <TouchableOpacity 
+              key={`eraser-${index}`}
+              style={[
+                styles.sizeButton,
+                size === brushSize && currentDrawMode === DRAW_MODES.ERASER ? styles.activeSizeButton : null
+              ]} 
+              onPress={() => selectEraserSize(size)}
+            >
+              <View 
                 style={[
-                  styles.sizeButton,
-                  size === currentSize && currentDrawMode === DRAW_MODES.ERASER ? styles.activeSizeButton : null
+                  styles.eraserSizeBorder, 
+                  { 
+                    width: getVisualSize(size),
+                    height: getVisualSize(size)
+                  }
                 ]} 
-                onPress={() => selectEraserSize(size)}
-              >
-                <View 
-                  style={[
-                    styles.eraserSizeBorder, 
-                    { 
-                      width: getVisualSize(size),
-                      height: getVisualSize(size),
-                      borderWidth: 2,
-                    }
-                  ]} 
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
       </Animated.View>
       
       {/* Color Palette Menu */}
-      <Animated.View 
-        style={[
-          styles.colorPaletteMenu,
-          {
-            opacity: colorPaletteAnimation,
-            width: colorPaletteAnimation.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 200]
-            }),
-            right: 55,
-            top: colorButtonTop,
-            display: showColorPalette ? 'flex' : 'none'
-          }
-        ]}
-      >
-        <ScrollView style={styles.scrollMenu}>
-          <View style={styles.colorPaletteWrapper}>
-            {colors.map((color, index) => (
-              <TouchableOpacity 
-                key={`color-${index}`}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.selectedColor
-                ]} 
-                onPress={() => selectColor(color)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </Animated.View>
+      <ColorPalette
+        visible={showColorPalette}
+        animation={colorPaletteAnimation}
+        top={colorButtonTop}
+        colors={colors}
+        selectedColor={selectedColor}
+        onSelectColor={selectColor}
+      />
       
       {/* Shapes Menu */}
       <Animated.View 
@@ -447,30 +339,37 @@ export function ToolBar({
           }
         ]}
       >
-        <ScrollView style={[styles.scrollMenu, { maxHeight: 153 }]}>
-          <View style={styles.shapesWrapper}>
-            {SHAPES.map((shape) => (
-              <TouchableOpacity 
-                key={`shape-${shape.id}`}
-                style={[
-                  styles.shapeOption,
-                  selectedShape === shape.id && currentDrawMode === DRAW_MODES.SHAPE ? styles.selectedShape : null
-                ]} 
-                onPress={() => selectShape(shape.id)}
-              >
-                <ThemedText style={styles.shapeIcon}>{shape.icon}</ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        <View style={styles.shapesWrapper}>
+          {SHAPES.map((shape) => (
+            <TouchableOpacity 
+              key={`shape-${shape.id}`}
+              style={[
+                styles.shapeOption,
+                selectedShape === shape.id && currentDrawMode === DRAW_MODES.SHAPE ? styles.selectedShape : null
+              ]} 
+              onPress={() => selectShape(shape.id)}
+            >
+              <ThemedText style={styles.shapeIcon}>{shape.icon}</ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
       </Animated.View>
+      
+      {/* Settings Menu */}
+      <SettingsMenu
+        visible={showSettings}
+        animation={settingsAnimation}
+        top={settingsButtonTop}
+        onSave={onSave}
+        onShare={onShare}
+        onClear={onClear}
+      />
       
       {/* Main Toolbar */}
       <Animated.View style={[
         styles.container,
         { opacity: visible ? 1 : 0 }
       ]}>
-
         <TouchableOpacity 
           ref={settingsButtonRef}
           onLayout={onSettingsButtonLayout}
@@ -511,10 +410,7 @@ export function ToolBar({
         <TouchableOpacity 
           ref={colorButtonRef}
           onLayout={onColorButtonLayout}
-          style={[
-            styles.toolButton,
-            { backgroundColor: '#FFECB3' }
-          ]} 
+          style={styles.toolButton}
           onPress={handleColorPress}
         >
           <View style={[
@@ -534,7 +430,6 @@ export function ToolBar({
         >
           <ThemedText style={styles.toolButtonIcon}>📐</ThemedText>
         </TouchableOpacity>
-      
       </Animated.View>
     </View>
   );
@@ -580,10 +475,6 @@ const styles = StyleSheet.create({
     borderColor: '#FFC107',
     marginRight: 10,
     overflow: 'hidden',
-    maxHeight: 180,
-  },
-  scrollMenu: {
-    maxHeight: 170,
   },
   sizesWrapper: {
     flexDirection: 'row',
@@ -617,42 +508,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 15,
     borderColor: '#ddd',
-  },
-  colorPaletteMenu: {
-    position: 'absolute',
-    backgroundColor: '#FFF9C4',
-    borderRadius: 15,
-    padding: 5,
     borderWidth: 2,
-    borderColor: '#FFC107',
-    marginRight: 10,
-    overflow: 'hidden',
-    maxHeight: 180,
-  },
-  colorPaletteWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 5,
-  },
-  colorOption: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    margin: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  selectedColor: {
-    borderWidth: 3,
-    borderColor: '#FF5722',
-    transform: [{ scale: 1.1 }],
   },
   shapesMenu: {
     position: 'absolute',
@@ -663,7 +519,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFC107',
     marginRight: 10,
     overflow: 'hidden',
-    maxHeight: 153,
+    maxHeight: 170,
   },
   shapesWrapper: {
     flexDirection: 'row',
@@ -698,41 +554,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     borderWidth: 2,
     borderColor: '#555',
-  },
-  // Yeni ayarlar menüsü stilleri
-  settingsMenu: {
-    position: 'absolute',
-    backgroundColor: '#FFF9C4',
-    borderRadius: 15,
-    padding: 5,
-    borderWidth: 2,
-    borderColor: '#FFC107',
-    marginRight: 10,
-    overflow: 'hidden',
-  },
-  settingsWrapper: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    padding: 5,
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    padding: 8,
-    backgroundColor: '#FFECB3',
-    borderRadius: 8,
-    marginVertical: 4,
-    borderWidth: 1,
-    borderColor: '#FFC107',
-  },
-  settingsButtonIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  settingsButtonText: {
-    fontSize: 16,
-    color: '#333',
-  },
-}); 
+  }
+});
+
+export default ToolBar; 
