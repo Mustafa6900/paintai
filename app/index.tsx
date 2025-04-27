@@ -672,16 +672,6 @@ export default function DrawingScreen() {
         </View>
       )}
       
-      {/* AI Processing Indicator */}
-      {isAIProcessing && (
-        <View style={styles.aiProcessingContainer}>
-          <ThemedText style={styles.aiProcessingText}>
-            {t('ai.processingMessage')}
-          </ThemedText>
-          <ActivityIndicator size="large" color="#FFC107" />
-        </View>
-      )}
-      
       <ToolBar
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
