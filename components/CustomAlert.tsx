@@ -27,7 +27,7 @@ export function CustomAlert({
   visible,
   title,
   message,
-  buttons = [{ text: t('confirmClear.confirm'), onPress: () => {}, style: 'default' }],
+  buttons = [{ text: t('saveSuccess.confirm'), onPress: () => {}, style: 'default' }],
   onDismiss
 }: CustomAlertProps) {
   const [isVisible, setIsVisible] = useState(visible);

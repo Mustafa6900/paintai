@@ -17,6 +17,7 @@ interface TextContent {
   saveSuccess: {
     title: string;
     message: string;
+    confirm: string;
   };
   saveError: {
     title: string;
@@ -62,7 +63,8 @@ export const texts: Localization = {
     },
     saveSuccess: {
       title: 'Başarılı',
-      message: 'Çizim galeriye kaydedildi.'
+      message: 'Çizim galeriye kaydedildi.',
+      confirm: 'Tamam'
     },
     saveError: {
       title: 'Kaydetme Hatası',
@@ -101,7 +103,8 @@ export const texts: Localization = {
     },
     saveSuccess: {
       title: 'Success',
-      message: 'Drawing saved to gallery.'
+      message: 'Drawing saved to gallery.',
+      confirm: 'OK'
     },
     saveError: {
       title: 'Save Error',
