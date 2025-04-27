@@ -5,6 +5,14 @@ interface TextContent {
     confirm: string;
     cancel: string;
   };
+  saveSuccess: {
+    title: string;
+    message: string;
+  };
+  saveError: {
+    title: string;
+    message: string;
+  };
 }
 
 interface Localization {
@@ -19,6 +27,14 @@ export const texts: Localization = {
       message: 'Tüm çizimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       confirm: 'Evet, temizle',
       cancel: 'İptal'
+    },
+    saveSuccess: {
+      title: 'Başarılı',
+      message: 'Çizim galeriye kaydedildi.'
+    },
+    saveError: {
+      title: 'Kaydetme Hatası',
+      message: 'Çizim kaydedilemedi.'
     }
   },
   en: {
@@ -27,15 +43,22 @@ export const texts: Localization = {
       message: 'Are you sure you want to clear all drawings? This action cannot be undone.',
       confirm: 'Yes, clear',
       cancel: 'Cancel'
+    },
+    saveSuccess: {
+      title: 'Success',
+      message: 'Drawing saved to gallery.'
+    },
+    saveError: {
+      title: 'Save Error',
+      message: 'Drawing could not be saved.'
     }
   }
 };
 
-// Varsayılan dil ayarı (uygulama başlatıldığında kullanılacak)
+// Default language setting used at application startup
 export const defaultLanguage = 'tr';
 
-// Aktif dil için bir store/context kullanılabilir
-// Bu basit bir örnek:
+// Language state management
 export let currentLanguage = defaultLanguage;
 
 export const setLanguage = (lang: 'tr' | 'en') => {
@@ -48,7 +71,7 @@ export const t = (key: string) => {
 
   for (const k of keys) {
     if (value[k] === undefined) {
-      return key; // Eğer çeviri yoksa key'i döndür
+      return key; // Return key if translation not found
     }
     value = value[k];
   }

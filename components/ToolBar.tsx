@@ -4,11 +4,12 @@ import {
   TouchableOpacity, 
   View, 
   Animated,
-  Dimensions,
   LayoutChangeEvent,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { t } from '@/locales';
 
 // Çizim modları
 export const DRAW_MODES = {
@@ -17,89 +18,98 @@ export const DRAW_MODES = {
   SHAPE: 'shape'
 };
 
-// Hazır şekiller listesi
 const SHAPES = [
-  { id: 'rectangle', name: 'Kare', icon: '⬜' },
-  { id: 'circle', name: 'Daire', icon: '⭕' },
-  { id: 'triangle', name: 'Üçgen', icon: '🔺' },
-  { id: 'line', name: 'Çizgi', icon: '➖' },
-  { id: 'arrow', name: 'Ok', icon: '➡️' },
-  { id: 'star', name: 'Yıldız', icon: '⭐' },
-  { id: 'heart', name: 'Kalp', icon: '❤️' },
-  { id: 'ellipse', name: 'Oval', icon: '🔵' },
-  { id: 'pentagon', name: 'Beşgen', icon: '⬟' },
-  { id: 'hexagon', name: 'Altıgen', icon: '⬢' }
+  { id: 'rectangle', name: 'Rectangle', icon: '⬜' },
+  { id: 'circle', name: 'Circle', icon: '⭕' },
+  { id: 'triangle', name: 'Triangle', icon: '🔺' },
+  { id: 'line', name: 'Line', icon: '➖' },
+  { id: 'arrow', name: 'Arrow', icon: '➡️' },
+  { id: 'star', name: 'Star', icon: '⭐' },
+  { id: 'heart', name: 'Heart', icon: '❤️' },
+  { id: 'ellipse', name: 'Ellipse', icon: '🔵' },
+  { id: 'pentagon', name: 'Pentagon', icon: '⬟' },
+  { id: 'hexagon', name: 'Hexagon', icon: '⬢' }
 ];
 
 interface ToolBarProps {
   onUndo: () => void;
   onToggleTool: (isPencil: boolean, size?: number) => void;
+
   isPencilActive: boolean;
   visible: boolean;
   currentSize: number;
   recentPencilSizes: number[];
-  // Yeni eklenen özellikler
+    
   selectedColor: string;
   colors: string[];
   setSelectedColor: (color: string) => void;
+
   selectedShape: string | null;
   setSelectedShape: (shape: string | null) => void;
   currentDrawMode: string;
   setCurrentDrawMode: (mode: string) => void;
+
+  onSave: () => void;
+  onShare: () => void;
+  onClear: () => void;
 }
 
 export function ToolBar({ 
   onUndo, 
   onToggleTool, 
-  isPencilActive,
   visible,
   currentSize,
-  recentPencilSizes = [5, 10, 15],
-  // Yeni parametreler
   selectedColor,
   colors,
   setSelectedColor,
   selectedShape,
   setSelectedShape,
   currentDrawMode,
-  setCurrentDrawMode
+  setCurrentDrawMode,
+  onSave,
+  onShare,
+  onClear
 }: ToolBarProps) {
   const [showPencilSizes, setShowPencilSizes] = useState(false);
   const [showEraserSizes, setShowEraserSizes] = useState(false);
   const [showColorPalette, setShowColorPalette] = useState(false);
   const [showShapes, setShowShapes] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Buton referansları için
+  // Buton Ref
   const pencilButtonRef = useRef<View>(null);
   const eraserButtonRef = useRef<View>(null);
   const colorButtonRef = useRef<View>(null);
   const shapeButtonRef = useRef<View>(null);
+  const settingsButtonRef = useRef<View>(null);
   
-  // Buton pozisyonları için
+  // Buton Position
   const [pencilButtonTop, setPencilButtonTop] = useState(0);
   const [eraserButtonTop, setEraserButtonTop] = useState(0);
   const [colorButtonTop, setColorButtonTop] = useState(0);
   const [shapeButtonTop, setShapeButtonTop] = useState(0);
+  const [settingsButtonTop, setSettingsButtonTop] = useState(0);
   
-  // Animasyon değerleri
+  // Animation Values
   const pencilSizeAnimation = new Animated.Value(0);
   const eraserSizeAnimation = new Animated.Value(0);
   const colorPaletteAnimation = new Animated.Value(0);
   const shapesAnimation = new Animated.Value(0);
+  const settingsAnimation = new Animated.Value(0);
   
-  // Silgi boyutları - Kalem boyutlarıyla aynı olmalı
+  // Eraser Sizes - Same as Pencil Sizes
   const pencilSizes = [3, 6, 8, 10, 12, 15, 20, 25, 30];
-  // Silgi ve kalem için aynı boyutları kullanıyoruz
   
-  // Tüm menüleri kapat
+  // Close All Menus
   const closeAllMenus = () => {
     setShowPencilSizes(false);
     setShowEraserSizes(false);
     setShowColorPalette(false);
     setShowShapes(false);
+    setShowSettings(false);
   };
   
-  // Çizim modu değiştiğinde uygun menüleri aç/kapat
+  // When the drawing mode changes, open/close the appropriate menus
   useEffect(() => {
     if (currentDrawMode === DRAW_MODES.PENCIL) {
       setShowEraserSizes(false);
@@ -113,7 +123,7 @@ export function ToolBar({
     }
   }, [currentDrawMode]);
   
-  // Animasyonları güncelle
+  // Update Animations
   useEffect(() => {
     Animated.timing(pencilSizeAnimation, {
       toValue: showPencilSizes ? 1 : 0,
@@ -138,9 +148,15 @@ export function ToolBar({
       duration: 200,
       useNativeDriver: false
     }).start();
-  }, [showPencilSizes, showEraserSizes, showColorPalette, showShapes]);
+    
+    Animated.timing(settingsAnimation, {
+      toValue: showSettings ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false
+    }).start();
+  }, [showPencilSizes, showEraserSizes, showColorPalette, showShapes, showSettings]);
   
-  // Layout işlevleri - pozisyonları alır
+  // Layout Functions - Get Positions
   const onPencilButtonLayout = (event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
     setPencilButtonTop(y + height/2 - 20);
@@ -161,7 +177,12 @@ export function ToolBar({
     setShapeButtonTop(y + height/2 - 20);
   };
   
-  // Görsel boyut skalası
+  const onSettingsButtonLayout = (event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    setSettingsButtonTop(y + height/2 - 20);
+  };
+  
+  // Visual Size Scale
   const getVisualSize = (size: number, eraser: boolean = false) => {
     if (eraser) {
       if (size === 10) return 10;
@@ -171,7 +192,7 @@ export function ToolBar({
     return Math.min(size, 20);
   };
   
-  // Buton işlevleri
+  // Button Functions
   const handlePencilPress = () => {
     if (currentDrawMode !== DRAW_MODES.PENCIL) {
       setCurrentDrawMode(DRAW_MODES.PENCIL);
@@ -196,7 +217,7 @@ export function ToolBar({
     closeAllMenus();
     setShowColorPalette(!showColorPalette);
     
-    // Renk seçildiğinde kalem moduna geç
+    // When a color is selected, switch to pencil mode
     if (currentDrawMode !== DRAW_MODES.PENCIL) {
       setCurrentDrawMode(DRAW_MODES.PENCIL);
       onToggleTool(true);
@@ -207,11 +228,21 @@ export function ToolBar({
     closeAllMenus();
     setShowShapes(!showShapes);
     
-    // Şekil menüsü açıldığında şekil moduna geç
+    // When the shape menu is opened, switch to shape mode
     setCurrentDrawMode(DRAW_MODES.SHAPE);
   };
   
-  // Seçim işlevleri
+  const handleSettingsPress = () => {
+    closeAllMenus();
+    setShowSettings(!showSettings);
+  };
+  
+  // For clearing, confirm dialog
+  const handleClearPress = () => {
+    onClear();
+  };
+  
+  // Selection Functions
   const selectPencilSize = (size: number) => {
     onToggleTool(true, size);
     setCurrentDrawMode(DRAW_MODES.PENCIL);
@@ -237,7 +268,51 @@ export function ToolBar({
   
   return (
     <View style={styles.mainContainer}>
-      {/* Kalem boyut menüsü */}
+
+      {/* Settings Menu */}
+      <Animated.View 
+        style={[
+          styles.settingsMenu,
+          {
+            opacity: settingsAnimation,
+            width: settingsAnimation.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 170]
+            }),
+            right: 55,
+            top: settingsButtonTop,
+            display: showSettings ? 'flex' : 'none'
+          }
+        ]}
+      >
+        <View style={styles.settingsWrapper}>
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            onPress={onSave}
+          >
+            <ThemedText style={styles.settingsButtonIcon}>💾</ThemedText>
+            <ThemedText style={styles.settingsButtonText}>Kaydet</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            onPress={onShare}
+          >
+            <ThemedText style={styles.settingsButtonIcon}>🚀</ThemedText>
+            <ThemedText style={styles.settingsButtonText}>Paylaş</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            onPress={handleClearPress}
+          >
+            <ThemedText style={styles.settingsButtonIcon}>🗑️</ThemedText>
+            <ThemedText style={styles.settingsButtonText}>Temizle</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      {/* Pencil Size Menu */}
       <Animated.View 
         style={[
           styles.sizeMenuContainer,
@@ -281,15 +356,15 @@ export function ToolBar({
         </ScrollView>
       </Animated.View>
       
-      {/* Silgi boyut menüsü - Kalem boyutlarıyla aynı olmalı */}
+      {/* Eraser Size Menu */}
       <Animated.View 
         style={[
-          styles.sizeMenuContainer, // Menü konteyneri stil değişikliği
+          styles.sizeMenuContainer,
           {
             opacity: eraserSizeAnimation,
             width: eraserSizeAnimation.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 180] // Genişliği kalem menüsüyle aynı
+              outputRange: [0, 180]
             }),
             right: 55,
             top: eraserButtonTop,
@@ -299,7 +374,7 @@ export function ToolBar({
       >
         <ScrollView style={styles.scrollMenu}>
           <View style={styles.sizesWrapper}>
-            {pencilSizes.map((size, index) => ( // Aynı boyutları silgi için de kullan
+            {pencilSizes.map((size, index) => (
               <TouchableOpacity 
                 key={`eraser-${index}`}
                 style={[
@@ -312,7 +387,7 @@ export function ToolBar({
                   style={[
                     styles.eraserSizeBorder, 
                     { 
-                      width: getVisualSize(size), // Görsel boyut fonksiyonunu kullan
+                      width: getVisualSize(size),
                       height: getVisualSize(size),
                       borderWidth: 2,
                     }
@@ -324,7 +399,7 @@ export function ToolBar({
         </ScrollView>
       </Animated.View>
       
-      {/* Renk paleti menüsü */}
+      {/* Color Palette Menu */}
       <Animated.View 
         style={[
           styles.colorPaletteMenu,
@@ -357,7 +432,7 @@ export function ToolBar({
         </ScrollView>
       </Animated.View>
       
-      {/* Şekiller menüsü - %15 küçültme */}
+      {/* Shapes Menu */}
       <Animated.View 
         style={[
           styles.shapesMenu,
@@ -365,7 +440,7 @@ export function ToolBar({
             opacity: shapesAnimation,
             width: shapesAnimation.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 170] // 200'den %15 küçük (170)
+              outputRange: [0, 170]
             }),
             right: 55,
             top: shapeButtonTop,
@@ -373,7 +448,7 @@ export function ToolBar({
           }
         ]}
       >
-        <ScrollView style={[styles.scrollMenu, { maxHeight: 153 }]}> {/* %15 küçültme */}
+        <ScrollView style={[styles.scrollMenu, { maxHeight: 153 }]}>
           <View style={styles.shapesWrapper}>
             {SHAPES.map((shape) => (
               <TouchableOpacity 
@@ -391,11 +466,21 @@ export function ToolBar({
         </ScrollView>
       </Animated.View>
       
-      {/* Ana araç çubuğu */}
+      {/* Main Toolbar */}
       <Animated.View style={[
         styles.container,
         { opacity: visible ? 1 : 0 }
       ]}>
+
+        <TouchableOpacity 
+          ref={settingsButtonRef}
+          onLayout={onSettingsButtonLayout}
+          style={styles.toolButton} 
+          onPress={handleSettingsPress}
+        >
+          <ThemedText style={styles.toolButtonIcon}>⚙️</ThemedText>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.toolButton} onPress={onUndo}>
           <ThemedText style={styles.toolButtonIcon}>↩️</ThemedText>
         </TouchableOpacity>
@@ -405,7 +490,7 @@ export function ToolBar({
           onLayout={onPencilButtonLayout}
           style={[
             styles.toolButton, 
-            isPencilActive ? styles.activeToolButton : null
+            currentDrawMode === DRAW_MODES.PENCIL ? styles.activeToolButton : null
           ]} 
           onPress={handlePencilPress}
         >
@@ -417,7 +502,7 @@ export function ToolBar({
           onLayout={onEraserButtonLayout}
           style={[
             styles.toolButton, 
-            !isPencilActive ? styles.activeToolButton : null
+            currentDrawMode === DRAW_MODES.ERASER ? styles.activeToolButton : null
           ]} 
           onPress={handleEraserPress}
         >
@@ -428,8 +513,8 @@ export function ToolBar({
           ref={colorButtonRef}
           onLayout={onColorButtonLayout}
           style={[
-            styles.toolButton, // Renk paleti butonu için arka planı düzeltme
-            { backgroundColor: '#FFECB3' } // Diğer butonlarla aynı
+            styles.toolButton,
+            { backgroundColor: '#FFECB3' }
           ]} 
           onPress={handleColorPress}
         >
@@ -450,6 +535,7 @@ export function ToolBar({
         >
           <ThemedText style={styles.toolButtonIcon}>📐</ThemedText>
         </TouchableOpacity>
+      
       </Animated.View>
     </View>
   );
@@ -458,7 +544,7 @@ export function ToolBar({
 const styles = StyleSheet.create({
   mainContainer: {
     position: 'absolute',
-    top: 40,
+    top: 20,
     right: 10,
     alignItems: 'center',
     zIndex: 5,
@@ -485,19 +571,6 @@ const styles = StyleSheet.create({
   },
   toolButtonIcon: {
     fontSize: 22,
-  },
-  sizeMenu: {
-    position: 'absolute',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: '#FFF9C4',
-    borderRadius: 15,
-    padding: 5,
-    borderWidth: 2,
-    borderColor: '#FFC107',
-    marginRight: 10,
-    overflow: 'hidden',
   },
   sizeMenuContainer: {
     position: 'absolute',
@@ -591,7 +664,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFC107',
     marginRight: 10,
     overflow: 'hidden',
-    maxHeight: 153, // %15 küçültme
+    maxHeight: 153,
   },
   shapesWrapper: {
     flexDirection: 'row',
@@ -620,12 +693,47 @@ const styles = StyleSheet.create({
   shapeIcon: {
     fontSize: 20,
   },
-  // Renk göstergesi için yeni stil
   colorButtonIndicator: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
     borderColor: '#555',
+  },
+  // Yeni ayarlar menüsü stilleri
+  settingsMenu: {
+    position: 'absolute',
+    backgroundColor: '#FFF9C4',
+    borderRadius: 15,
+    padding: 5,
+    borderWidth: 2,
+    borderColor: '#FFC107',
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  settingsWrapper: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    padding: 5,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    padding: 8,
+    backgroundColor: '#FFECB3',
+    borderRadius: 8,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#FFC107',
+  },
+  settingsButtonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    color: '#333',
   },
 }); 

@@ -1,22 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  StyleSheet, 
-  TouchableOpacity, 
+  StyleSheet,  
   View, 
-  Platform, 
   PanResponder, 
   Share, 
   Alert,
   Animated,
-  ScrollView
+  Platform
 } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import * as SplashScreenModule from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { AppHeader } from '@/components/AppHeader';
 import { ToolBar, DRAW_MODES } from '@/components/ToolBar';
 import Svg, { 
   Path, 
@@ -24,29 +20,26 @@ import Svg, {
   Circle, 
   Line, 
   Polygon, 
-  G, 
   Ellipse
 } from 'react-native-svg';
+import { CustomAlert } from '@/components/CustomAlert';
+import { t } from '@/locales';
 
-// Splash ekranının otomatik kapanmasını engelleme
 SplashScreenModule.preventAutoHideAsync();
 
-// Çizgi noktası tipi
 interface Point {
   x: number;
   y: number;
 }
 
-// Çizgi verisi tipi - tool özelliği eklendi
 interface DrawingLine {
   points: Point[];
   color: string;
   thickness: number;
   tool: string;
-  path?: string; // Path string'i ekledik
+  path?: string;
 }
 
-// Şekil verisi tipi
 interface ShapeData {
   id: string;
   type: string;
@@ -56,6 +49,20 @@ interface ShapeData {
   y2: number;
   color: string;
   strokeWidth: number;
+}
+
+interface AlertButton {
+  text: string;
+  onPress: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
+interface AlertConfig {
+  visible: boolean;
+  title: string;
+  message: string;
+  buttons: AlertButton[];
+  onDismiss: () => void;
 }
 
 export default function DrawingScreen() {
@@ -81,27 +88,33 @@ export default function DrawingScreen() {
   const [brushSize, setBrushSize] = useState(5);
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const toolbarHeight = useRef(new Animated.Value(1)).current;
-  const [headerVisible, setHeaderVisible] = useState(true);
   const [isPencilActive, setIsPencilActive] = useState(true);
   const [recentPencilSizes, setRecentPencilSizes] = useState([5, 10, 15]);
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
   const [currentDrawMode, setCurrentDrawMode] = useState(DRAW_MODES.PENCIL);
   const [temporaryShape, setTemporaryShape] = useState<any>(null);
+  const [alertConfig, setAlertConfig] = useState<AlertConfig>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    onDismiss: () => {}
+  });
   
   const colors = [
-    '#000000', '#FFFFFF', '#808080', // Siyah, Beyaz, Gri
-    '#FF0000', '#FF4500', '#FF6347', // Kırmızı tonları
-    '#FFA500', '#FFD700', '#FFFF00', // Turuncu ve sarı
-    '#32CD32', '#00FF00', '#008000', // Yeşil tonları
-    '#00FFFF', '#00BFFF', '#0000FF', // Mavi tonları
-    '#800080', '#9370DB', '#FF00FF', // Mor tonları
-    '#FFDAB9', // Şeftali
-    '#A52A2A', '#8B4513', '#CD853F'  // Kahverengi tonları (yeni ekledik)
+    '#000000', '#FFFFFF', '#808080', // Black, White, Gray
+    '#FF0000', '#FF4500', '#FF6347', // Red shades
+    '#FFA500', '#FFD700', '#FFFF00', // Orange and yellow
+    '#32CD32', '#00FF00', '#008000', // Green shades
+    '#00FFFF', '#00BFFF', '#0000FF', // Blue shades
+    '#800080', '#9370DB', '#FF00FF', // Purple shades
+    '#FFDAB9', // Peach
+    '#A52A2A', '#8B4513', '#CD853F'  // Brown shades
   ];
 
   const canvasRef = useRef(null);
 
-  // Temizle fonksiyonu
+  // Clear function
   const clearCanvas = () => {
     setLines([]);
     setCurrentLine([]);
@@ -109,7 +122,7 @@ export default function DrawingScreen() {
     setCurrentShape(null);
   };
 
-  // Geri al fonksiyonu - shape ve line için ayrı kontrol
+  // Undo function - separate control for shape and line
   const handleUndo = () => {
     if (shapes.length > 0) {
       setShapes(prev => prev.slice(0, -1));
@@ -118,14 +131,13 @@ export default function DrawingScreen() {
     }
   };
 
-  // PanResponder oluşturma
+  // PanResponder create
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
       
       if (currentDrawMode === DRAW_MODES.SHAPE && selectedShape) {
-        // Şekil çizimi başlat
         setCurrentShape({
           id: Date.now().toString(),
           type: selectedShape,
@@ -137,7 +149,6 @@ export default function DrawingScreen() {
           strokeWidth: brushSize
         });
       } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
-        // Normal çizim davranışı
         const newPoint = { x: locationX, y: locationY };
         setCurrentLine([newPoint]);
       }
@@ -146,7 +157,6 @@ export default function DrawingScreen() {
       const { locationX, locationY } = evt.nativeEvent;
       
       if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
-        // Şekil çizimi - mevcut haliyle bırakıyoruz
         setCurrentShape(prevShape => 
           prevShape ? {
             ...prevShape,
@@ -155,7 +165,6 @@ export default function DrawingScreen() {
           } : null
         );
       } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
-        // Kalem çizimi - path oluşturma için güncelliyoruz
         setCurrentLine(prevLine => {
           const newLine = [...prevLine, { x: locationX, y: locationY }];
           return newLine;
@@ -164,14 +173,12 @@ export default function DrawingScreen() {
     },
     onPanResponderRelease: (evt) => {
       if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
-        // Tamamlanan şekli shapes dizisine ekle
         setShapes(prevShapes => [...prevShapes, currentShape]);
         setCurrentShape(null);
       } else if (currentLine.length > 0) {
-        // Hem tek nokta hem de çizgi çizimini destekle
         const pathString = currentLine.length > 1 
           ? createPathFromPoints(currentLine)
-          : ''; // Tek nokta için boş path
+          : '';
         
         setLines(prevLines => [
           ...prevLines, 
@@ -189,18 +196,12 @@ export default function DrawingScreen() {
     }
   });
 
-  // Path string'i oluşturma fonksiyonu
   const createPathFromPoints = (points: Point[]): string => {
     if (points.length < 2) return '';
     
     let path = `M ${points[0].x} ${points[0].y}`;
     
-    // Pürüzsüz çizgiler için Bezier eğrisi kullanıyoruz
     for (let i = 1; i < points.length; i++) {
-      // Basit bir çizgi için:
-      // path += ` L ${points[i].x} ${points[i].y}`;
-      
-      // Daha pürüzsüz çizgi için Bezier eğrisi:
       if (i < points.length - 1) {
         const xc = (points[i].x + points[i+1].x) / 2;
         const yc = (points[i].y + points[i+1].y) / 2;
@@ -213,13 +214,12 @@ export default function DrawingScreen() {
     return path;
   };
 
-  // Çizim renderı
+  // Drawing render
   const renderLines = () => {
     return (
       <Svg style={StyleSheet.absoluteFill}>
-        {/* Tamamlanmış çizgiler */}
         {lines.map((line, index) => {
-          // Tek nokta çizimi için
+          // For single point drawing
           if (line.points.length === 1) {
             const point = line.points[0];
             return (
@@ -233,7 +233,6 @@ export default function DrawingScreen() {
             );
           }
           
-          // Çizgi çizimi için
           return (
             <Path
               key={`line-${index}`}
@@ -247,7 +246,6 @@ export default function DrawingScreen() {
           );
         })}
         
-        {/* Geçerli çizim */}
         {currentLine.length > 1 ? (
           <Path
             d={createPathFromPoints(currentLine)}
@@ -269,51 +267,110 @@ export default function DrawingScreen() {
     );
   };
 
-  // Paylaşma fonksiyonu
-  const handleShare = async () => {
-    try {
-      // Canvas'ı görüntü olarak yakala
-      const uri = await captureRef(canvasRef, {
-        format: 'png',
-        quality: 1
-      });
-      
-      // Paylaş
-      await Share.share({
-        url: uri,
-        message: 'PaintAI ile çizimim'
-      });
-    } catch (error) {
-      Alert.alert('Paylaşma Hatası', 'Çizim paylaşılamadı.');
-    }
+  // Alert Helper Function
+  const showAlert = (title: string, message: string, buttons = [{ text: t('confirmClear.confirm'), onPress: () => {}, style: 'default' as const }]) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons,
+      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+    });
   };
 
-  // Çizimi kaydetme fonksiyonu
+  // Save function
   const handleSave = async () => {
     try {
-      // İzin iste
       const { status } = await MediaLibrary.requestPermissionsAsync();
       
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Çizimi kaydetmek için galeri erişim izni gerekli.');
+        showAlert(t('saveError.title'), t('saveError.message'));
         return;
       }
       
-      // Canvas'ı görüntü olarak yakala
+      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const uri = await captureRef(canvasRef, {
         format: 'png',
-        quality: 1
+        quality: 1,
+        result: 'tmpfile',
       });
       
-      // Görüntüyü galeriye kaydet
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Başarılı', 'Çizim galeriye kaydedildi.');
+      const asset = await MediaLibrary.createAssetAsync(uri);
+      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
     } catch (error) {
-      Alert.alert('Kaydetme Hatası', 'Çizim kaydedilemedi.');
+      showAlert(t('saveError.title'), t('saveError.message'));
     }
   };
 
-  // Araç çubuğunu gizleyip gösterebilmek için:
+  // Share function
+  const handleShare = async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const uri = await captureRef(canvasRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+            
+      // Platform control
+      let shareOptions;
+      if (Platform.OS === 'ios') {
+        // iOS 
+        shareOptions = {
+          url: uri,
+          message: 'PaintAI ile çizimim'
+        };
+      } else {
+        // Android 
+        shareOptions = {
+          title: 'Çizimimi Paylaş',
+          message: 'PaintAI ile çizimim',
+          url: uri
+        };
+      }
+      
+      // share
+      const result = await Share.share(shareOptions);
+      
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+        } else {
+          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+        }
+      } else if (result.action === Share.dismissedAction) {
+        showAlert(t('shareCancel.title'), t('shareCancel.message'));
+      }
+    } catch (error) {
+      showAlert(t('shareError.title'), t('shareError.message'));
+    }
+  };
+
+  // Clear function
+  const handleClearRequest = () => {
+    showAlert(
+      t('clearConfirm.title'),
+      t('clearConfirm.message'),
+      [
+        {
+          text: t('clearCancel.title'),
+          onPress: () => {},
+          style: 'default' as const
+        },
+        {
+          text: t('clearConfirm.title'),
+          onPress: clearCanvas,
+          style: 'default' as const
+        }
+      ]
+    );
+  };
+
+  // Toolbar visibility
   useEffect(() => {
     Animated.timing(toolbarHeight, {
       toValue: toolbarVisible ? 1 : 0,
@@ -325,31 +382,27 @@ export default function DrawingScreen() {
   const handleToggleTool = (isPencil: boolean, size?: number) => {
     setIsPencilActive(isPencil);
     
-    // Boyut değişimi varsa uygula
+    // If size change, apply
     if (size) {
       setBrushSize(size);
       
-      // Eğer kalem seçildiyse ve boyut değiştiyse, son kullanılan boyutları güncelle
       if (isPencil) {
         updateRecentPencilSizes(size);
       }
     }
     
-    // Renk değişimi (silgi için beyaz)
+    // Color change (for eraser, white)
     if (!isPencil) {
-      // Silgi seçildiyse arkaplan rengi olarak beyazı seç
       setSelectedColor('#FFFFFF');
     } else {
-      // Kalem seçildiyse en son seçilen rengi kullan veya varsayılan siyah
       if (selectedColor === '#FFFFFF') {
         setSelectedColor('#000000');
       }
     }
   };
   
-  // Son kullanılan kalem boyutlarını güncelleme
+  // Update recent pencil sizes
   const updateRecentPencilSizes = (newSize: number) => {
-    // Eğer boyut zaten listede varsa, listenin en başına taşı
     if (recentPencilSizes.includes(newSize)) {
       const newSizes = [
         newSize,
@@ -364,7 +417,7 @@ export default function DrawingScreen() {
     }
   };
 
-  // Render şekiller fonksiyonu için güncellemeler
+  // Render shapes function
   const renderShapes = () => {
     const allShapes = [...shapes];
     if (currentShape) allShapes.push(currentShape);
@@ -373,7 +426,6 @@ export default function DrawingScreen() {
       const { id, type, x1, y1, x2, y2, color, strokeWidth } = shape;
       const key = `shape-${id}-${index}`;
       
-      // Paint gibi şekil çizimi için mantık
       const minX = Math.min(x1, x2);
       const minY = Math.min(y1, y2);
       const maxX = Math.max(x1, x2);
@@ -471,17 +523,18 @@ export default function DrawingScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <AppHeader 
-        onSave={handleSave}
-        onShare={handleShare}
-        onClear={clearCanvas}
-        headerVisible={headerVisible}
-        setHeaderVisible={setHeaderVisible}
-      />
-      
       <View style={styles.canvasContainer} {...panResponder.panHandlers}>
-        <View style={styles.canvas} ref={canvasRef}>
-          <Svg style={styles.svgCanvas} width="100%" height="100%">
+        <View 
+          style={styles.canvas} 
+          ref={canvasRef}
+          collapsable={false}
+          renderToHardwareTextureAndroid={true}
+        >
+          <Svg 
+            style={styles.svgCanvas} 
+            width="100%" 
+            height="100%"
+          >
             {renderLines()}
             {renderShapes()}
           </Svg>
@@ -492,7 +545,7 @@ export default function DrawingScreen() {
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
         isPencilActive={isPencilActive}
-        visible={!headerVisible}
+        visible={true}
         currentSize={brushSize}
         recentPencilSizes={recentPencilSizes}
         selectedColor={selectedColor}
@@ -502,6 +555,17 @@ export default function DrawingScreen() {
         setSelectedShape={setSelectedShape}
         currentDrawMode={currentDrawMode}
         setCurrentDrawMode={setCurrentDrawMode}
+        onSave={handleSave}
+        onShare={handleShare}
+        onClear={handleClearRequest}
+      />
+      
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onDismiss={alertConfig.onDismiss}
       />
     </ThemedView>
   );
@@ -510,17 +574,21 @@ export default function DrawingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Göz yormayan beyaz
+    backgroundColor: '#FFFFFF',
   },
   canvasContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Beyaz arka plan
+    backgroundColor: '#FFFFFF',
     margin: 0,
     overflow: 'hidden',
   },
   canvas: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Beyaz arka plan
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    elevation: 0
   },
   toggleButton: {
     position: 'absolute',
