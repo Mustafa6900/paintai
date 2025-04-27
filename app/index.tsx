@@ -55,6 +55,41 @@ export default function DrawingScreen() {
 
   const canvasRef = useRef(null);
 
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  // Splash screen
+  useEffect(() => {
+    async function prepareApp() {
+      try {
+        // Herhangi bir veri yükleme işlemi yapılabilir
+        // Örnek: Renk paletlerini veya son kullanıcı çizimlerini yükleme
+        
+        // Yükleme işlemi için simüle edilmiş bekleme süresi (isteğe bağlı)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (e) {
+        console.warn('App loading error', e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepareApp();
+  }, []);
+
+  useEffect(() => {
+    async function hideSplashScreen() {
+      if (appIsReady) {
+        await SplashScreenModule.hideAsync();
+      }
+    }
+    
+    hideSplashScreen();
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
+
   // Clear function
   const clearCanvas = () => {
     setLines([]);
