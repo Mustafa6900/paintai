@@ -22,12 +22,21 @@ interface DrawingToolbarProps {
   setSelectedColor: (color: string) => void;
   setToolbarVisible: (visible: boolean) => void;
   setSelectedShape: (shape: string | null) => void;
+  currentDrawMode: string;
+  setCurrentDrawMode: (mode: string) => void;
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const DRAG_THRESHOLD = 50; // Kaç piksel sürüklenince kapanacak/açılacak
 
-// Hazır şekiller listesi
+// Çizim modları
+export const DRAW_MODES = {
+  PENCIL: 'pencil',
+  ERASER: 'eraser',
+  SHAPE: 'shape'
+};
+
+// Hazır şekiller listesi - ikon değişiklikleri daha büyük ve net olması için
 const SHAPES = [
   { id: 'rectangle', name: 'Kare', icon: '⬜' },
   { id: 'circle', name: 'Daire', icon: '⭕' },
@@ -50,7 +59,9 @@ export function DrawingToolbar({
   setBrushSize, 
   setSelectedColor,
   setToolbarVisible,
-  setSelectedShape
+  setSelectedShape,
+  currentDrawMode,
+  setCurrentDrawMode
 }: DrawingToolbarProps) {
   const toolbarHeight = useRef(new Animated.Value(toolbarVisible ? 1 : 0)).current;
   const [panStartY, setPanStartY] = useState(0);
@@ -88,6 +99,19 @@ export function DrawingToolbar({
     }).start();
   }, [toolbarVisible]);
 
+  // Şekil seçme işlevi güncellendi
+  const handleShapeSelection = (shapeId: string) => {
+    setSelectedShape(shapeId);
+    setCurrentDrawMode(DRAW_MODES.SHAPE);
+  };
+
+  // Fırça seçme işlevi güncellendi
+  const handleBrushSelection = (size: number) => {
+    setBrushSize(size);
+    setCurrentDrawMode(DRAW_MODES.PENCIL);
+    setSelectedShape(null);
+  };
+
   return (
     <>
       <Animated.View 
@@ -96,7 +120,7 @@ export function DrawingToolbar({
           {
             maxHeight: toolbarHeight.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 270]
+              outputRange: [0, 240] // %10 daha küçük
             })
           }
         ]}>
@@ -124,12 +148,9 @@ export function DrawingToolbar({
                         key={size}
                         style={[
                           styles.brushSizeOption,
-                          brushSize === size && styles.selectedBrushSize
+                          brushSize === size && currentDrawMode === DRAW_MODES.PENCIL && styles.selectedBrushSize
                         ]}
-                        onPress={() => {
-                          setBrushSize(size);
-                          setSelectedShape(null); // Fırça seçilince şekil seçimini kaldır
-                        }}
+                        onPress={() => handleBrushSelection(size)}
                       >
                         <View 
                           style={{
@@ -179,9 +200,9 @@ export function DrawingToolbar({
                         key={shape.id}
                         style={[
                           styles.shapeOption,
-                          selectedShape === shape.id && styles.selectedShape
+                          selectedShape === shape.id && currentDrawMode === DRAW_MODES.SHAPE && styles.selectedShape
                         ]}
-                        onPress={() => setSelectedShape(shape.id)}
+                        onPress={() => handleShapeSelection(shape.id)}
                       >
                         <ThemedText style={styles.shapeIcon}>{shape.icon}</ThemedText>
                       </TouchableOpacity>
@@ -266,7 +287,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    height: 140,
+    height: 130, // %10 küçültüldü
   },
   sectionHeader: {
     alignItems: 'center',

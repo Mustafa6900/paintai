@@ -16,9 +16,18 @@ import * as SplashScreenModule from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { DrawingToolbar } from '@/components/DrawingToolbar';
+import { DrawingToolbar, DRAW_MODES } from '@/components/DrawingToolbar';
 import { AppHeader } from '@/components/AppHeader';
 import { ToolBar } from '@/components/ToolBar';
+import Svg, { 
+  Path, 
+  Rect, 
+  Circle, 
+  Line, 
+  Polygon, 
+  G, 
+  Ellipse
+} from 'react-native-svg';
 
 // Splash ekranının otomatik kapanmasını engelleme
 SplashScreenModule.preventAutoHideAsync();
@@ -29,11 +38,25 @@ interface Point {
   y: number;
 }
 
-// Çizgi verisi tipi
+// Çizgi verisi tipi - tool özelliği eklendi
 interface DrawingLine {
   points: Point[];
   color: string;
   thickness: number;
+  tool: string;
+  path?: string; // Path string'i ekledik
+}
+
+// Şekil verisi tipi
+interface ShapeData {
+  id: string;
+  type: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  strokeWidth: number;
 }
 
 export default function DrawingScreen() {
@@ -53,6 +76,8 @@ export default function DrawingScreen() {
 
   const [lines, setLines] = useState<DrawingLine[]>([]);
   const [currentLine, setCurrentLine] = useState<Point[]>([]);
+  const [shapes, setShapes] = useState<ShapeData[]>([]);
+  const [currentShape, setCurrentShape] = useState<ShapeData | null>(null);
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
   const [toolbarVisible, setToolbarVisible] = useState(true);
@@ -60,6 +85,9 @@ export default function DrawingScreen() {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [isPencilActive, setIsPencilActive] = useState(true);
   const [recentPencilSizes, setRecentPencilSizes] = useState([5, 10, 15]);
+  const [selectedShape, setSelectedShape] = useState<string | null>(null);
+  const [currentDrawMode, setCurrentDrawMode] = useState(DRAW_MODES.PENCIL);
+  const [temporaryShape, setTemporaryShape] = useState<any>(null);
   
   const colors = [
     '#000000', '#FFFFFF', '#808080', // Siyah, Beyaz, Gri
@@ -78,11 +106,17 @@ export default function DrawingScreen() {
   const clearCanvas = () => {
     setLines([]);
     setCurrentLine([]);
+    setShapes([]);
+    setCurrentShape(null);
   };
 
-  // Geri al fonksiyonu
+  // Geri al fonksiyonu - shape ve line için ayrı kontrol
   const handleUndo = () => {
-    setLines(prev => prev.slice(0, -1));
+    if (shapes.length > 0) {
+      setShapes(prev => prev.slice(0, -1));
+    } else if (lines.length > 0) {
+      setLines(prev => prev.slice(0, -1));
+    }
   };
 
   // PanResponder oluşturma
@@ -90,138 +124,150 @@ export default function DrawingScreen() {
     onStartShouldSetPanResponder: () => true,
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
-      setCurrentLine([{ x: locationX, y: locationY }]);
+      
+      if (currentDrawMode === DRAW_MODES.SHAPE && selectedShape) {
+        // Şekil çizimi başlat
+        setCurrentShape({
+          id: Date.now().toString(),
+          type: selectedShape,
+          x1: locationX,
+          y1: locationY,
+          x2: locationX,
+          y2: locationY,
+          color: selectedColor,
+          strokeWidth: brushSize
+        });
+      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
+        // Normal çizim davranışı
+        const newPoint = { x: locationX, y: locationY };
+        setCurrentLine([newPoint]);
+      }
     },
     onPanResponderMove: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
       
-      // Son noktayı al
-      const lastPoint = currentLine[currentLine.length - 1];
-      if (!lastPoint) return;
-      
-      // İlk nokta ile aynı konuma dokunulursa hareket ettirme
-      if (Math.abs(locationX - lastPoint.x) < 3 && Math.abs(locationY - lastPoint.y) < 3) {
-        return;
-      }
-      
-      // Son nokta ile yeni nokta arasındaki mesafe
-      const dx = locationX - lastPoint.x;
-      const dy = locationY - lastPoint.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < 5) {
-        // Çok yakın noktaları direkt ekle
-        setCurrentLine(prev => [...prev, { x: locationX, y: locationY }]);
-      } else {
-        // Uzak noktalar için ara noktalar ekle
-        const steps = Math.floor(distance / 3); // 3 piksel'de bir nokta
-        const xStep = dx / steps;
-        const yStep = dy / steps;
-        
-        const newPoints: Point[] = [];
-        for (let i = 1; i <= steps; i++) {
-          newPoints.push({
-            x: lastPoint.x + xStep * i,
-            y: lastPoint.y + yStep * i
-          });
-        }
-        
-        setCurrentLine(prev => [...prev, ...newPoints]);
+      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
+        // Şekil çizimi - mevcut haliyle bırakıyoruz
+        setCurrentShape(prevShape => 
+          prevShape ? {
+            ...prevShape,
+            x2: locationX,
+            y2: locationY,
+          } : null
+        );
+      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
+        // Kalem çizimi - path oluşturma için güncelliyoruz
+        setCurrentLine(prevLine => {
+          const newLine = [...prevLine, { x: locationX, y: locationY }];
+          return newLine;
+        });
       }
     },
-    onPanResponderRelease: () => {
-      if (currentLine.length > 0) {
-        setLines(prev => [...prev, {
-          points: currentLine,
-          color: selectedColor,
-          thickness: brushSize
-        }]);
+    onPanResponderRelease: (evt) => {
+      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
+        // Tamamlanan şekli shapes dizisine ekle
+        setShapes(prevShapes => [...prevShapes, currentShape]);
+        setCurrentShape(null);
+      } else if (currentLine.length > 0) {
+        // Hem tek nokta hem de çizgi çizimini destekle
+        const pathString = currentLine.length > 1 
+          ? createPathFromPoints(currentLine)
+          : ''; // Tek nokta için boş path
+        
+        setLines(prevLines => [
+          ...prevLines, 
+          {
+            points: currentLine,
+            color: selectedColor,
+            thickness: brushSize,
+            tool: currentDrawMode,
+            path: pathString
+          }
+        ]);
+        
         setCurrentLine([]);
       }
     }
   });
 
+  // Path string'i oluşturma fonksiyonu
+  const createPathFromPoints = (points: Point[]): string => {
+    if (points.length < 2) return '';
+    
+    let path = `M ${points[0].x} ${points[0].y}`;
+    
+    // Pürüzsüz çizgiler için Bezier eğrisi kullanıyoruz
+    for (let i = 1; i < points.length; i++) {
+      // Basit bir çizgi için:
+      // path += ` L ${points[i].x} ${points[i].y}`;
+      
+      // Daha pürüzsüz çizgi için Bezier eğrisi:
+      if (i < points.length - 1) {
+        const xc = (points[i].x + points[i+1].x) / 2;
+        const yc = (points[i].y + points[i+1].y) / 2;
+        path += ` Q ${points[i].x} ${points[i].y}, ${xc} ${yc}`;
+      } else {
+        path += ` L ${points[i].x} ${points[i].y}`;
+      }
+    }
+    
+    return path;
+  };
+
   // Çizim renderı
   const renderLines = () => {
     return (
-      <>
+      <Svg style={StyleSheet.absoluteFill}>
         {/* Tamamlanmış çizgiler */}
-        {lines.map((line, lineIndex) => (
-          <View key={lineIndex} style={styles.lineContainer}>
-            {/* Tek nokta kontrolü */}
-            {line.points.length === 1 ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  left: line.points[0].x - line.thickness/2,
-                  top: line.points[0].y - line.thickness/2,
-                  width: line.thickness,
-                  height: line.thickness,
-                  borderRadius: line.thickness/2,
-                  backgroundColor: line.color,
-                }}
+        {lines.map((line, index) => {
+          // Tek nokta çizimi için
+          if (line.points.length === 1) {
+            const point = line.points[0];
+            return (
+              <Circle
+                key={`dot-${index}`}
+                cx={point.x}
+                cy={point.y}
+                r={line.thickness/2}
+                fill={line.tool === DRAW_MODES.ERASER ? '#FFFFFF' : line.color}
               />
-            ) : (
-              /* Her çizgi için tek bir path oluştur */
-              buildSmoothLine(line.points, line.color, line.thickness)
-            )}
-          </View>
-        ))}
-        
-        {/* Çizim sırasındaki geçerli çizgi */}
-        <View style={styles.lineContainer}>
-          {currentLine.length === 1 ? (
-            <View
-              style={{
-                position: 'absolute',
-                left: currentLine[0].x - brushSize/2,
-                top: currentLine[0].y - brushSize/2,
-                width: brushSize,
-                height: brushSize,
-                borderRadius: brushSize/2,
-                backgroundColor: selectedColor,
-              }}
+            );
+          }
+          
+          // Çizgi çizimi için
+          return (
+            <Path
+              key={`line-${index}`}
+              d={line.path || createPathFromPoints(line.points)}
+              stroke={line.tool === DRAW_MODES.ERASER ? '#FFFFFF' : line.color}
+              strokeWidth={line.thickness}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
             />
-          ) : (
-            currentLine.length > 1 && buildSmoothLine(currentLine, selectedColor, brushSize)
-          )}
-        </View>
-      </>
+          );
+        })}
+        
+        {/* Geçerli çizim */}
+        {currentLine.length > 1 ? (
+          <Path
+            d={createPathFromPoints(currentLine)}
+            stroke={currentDrawMode === DRAW_MODES.ERASER ? '#FFFFFF' : selectedColor}
+            strokeWidth={brushSize}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        ) : currentLine.length === 1 ? (
+          <Circle
+            cx={currentLine[0].x}
+            cy={currentLine[0].y}
+            r={brushSize/2}
+            fill={currentDrawMode === DRAW_MODES.ERASER ? '#FFFFFF' : selectedColor}
+          />
+        ) : null}
+      </Svg>
     );
-  };
-
-  // Pürüzsüz çizgi oluşturma fonksiyonunu güncelleyelim
-  const buildSmoothLine = (points: Point[], color: string, thickness: number) => {
-    return points.map((point: Point, index: number) => {
-      if (index === 0) return null;
-      
-      const prevPoint = points[index - 1];
-      const angle = Math.atan2(point.y - prevPoint.y, point.x - prevPoint.x);
-      const distance = Math.sqrt(
-        Math.pow(point.x - prevPoint.x, 2) + Math.pow(point.y - prevPoint.y, 2)
-      );
-      
-      return (
-        <View 
-          key={index} 
-          style={{
-            position: 'absolute',
-            left: prevPoint.x,
-            top: prevPoint.y,
-            width: distance + 2,
-            height: thickness,
-            backgroundColor: color,
-            borderRadius: thickness / 2, // Her zaman yuvarlak
-            transform: [
-              { translateX: 0 },
-              { translateY: -thickness / 2 },
-              { rotate: `${angle}rad` },
-            ],
-            zIndex: index
-          }} 
-        />
-      );
-    });
   };
 
   // Paylaşma fonksiyonu
@@ -319,9 +365,113 @@ export default function DrawingScreen() {
     }
   };
 
+  // Render şekiller fonksiyonu için güncellemeler
+  const renderShapes = () => {
+    const allShapes = [...shapes];
+    if (currentShape) allShapes.push(currentShape);
+    
+    return allShapes.map((shape, index) => {
+      const { id, type, x1, y1, x2, y2, color, strokeWidth } = shape;
+      const key = `shape-${id}-${index}`;
+      
+      // Paint gibi şekil çizimi için mantık
+      const minX = Math.min(x1, x2);
+      const minY = Math.min(y1, y2);
+      const maxX = Math.max(x1, x2);
+      const maxY = Math.max(y1, y2);
+      
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      switch (type) {
+        case 'rectangle':
+          return (
+            <Rect
+              key={key}
+              x={minX}
+              y={minY}
+              width={width}
+              height={height}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+          );
+          
+        case 'circle':
+          const radius = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)) / 2;
+          const centerX = (x1 + x2) / 2;
+          const centerY = (y1 + y2) / 2;
+          
+          return (
+            <Circle
+              key={key}
+              cx={centerX}
+              cy={centerY}
+              r={radius}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+          );
+        
+        case 'ellipse':
+          const ellipseCenterX = (x1 + x2) / 2;
+          const ellipseCenterY = (y1 + y2) / 2;
+          const ellipseRadiusX = Math.abs(x2 - x1) / 2;
+          const ellipseRadiusY = Math.abs(y2 - y1) / 2;
+          
+          return (
+            <Ellipse
+              key={key}
+              cx={ellipseCenterX}
+              cy={ellipseCenterY}
+              rx={ellipseRadiusX}
+              ry={ellipseRadiusY}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+          );
+        
+        case 'line':
+          return (
+            <Line
+              key={key}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+            />
+          );
+        
+        case 'triangle':
+          const points = `${minX + width/2},${minY} ${minX},${maxY} ${maxX},${maxY}`;
+          
+          return (
+            <Polygon
+              key={key}
+              points={points}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeLinejoin="round"
+              fill="none"
+            />
+          );
+        
+        // Diğer şekiller için gerekli kodları ekleyin
+        
+        default:
+          return null;
+      }
+    });
+  };
+
   return (
     <ThemedView style={styles.container}>
-      {/* Yeni AppHeader bileşenini kullanıyoruz */}
       <AppHeader 
         onSave={handleSave}
         onShare={handleShare}
@@ -332,22 +482,27 @@ export default function DrawingScreen() {
       
       <View style={styles.canvasContainer} {...panResponder.panHandlers}>
         <View style={styles.canvas} ref={canvasRef}>
-          {renderLines()}
+          <Svg style={styles.svgCanvas} width="100%" height="100%">
+            {renderLines()}
+            {renderShapes()}
+          </Svg>
         </View>
       </View>
       
-      {/* DrawingToolbar bileşenini kullanıyoruz */}
       <DrawingToolbar
         toolbarVisible={toolbarVisible}
         selectedColor={selectedColor}
         brushSize={brushSize}
         colors={colors}
+        selectedShape={selectedShape}
         setBrushSize={setBrushSize}
         setSelectedColor={setSelectedColor}
         setToolbarVisible={setToolbarVisible}
+        setSelectedShape={setSelectedShape}
+        currentDrawMode={currentDrawMode}
+        setCurrentDrawMode={setCurrentDrawMode}
       />
       
-      {/* Araç Çubuğu - Header gizlendiğinde görünür */}
       <ToolBar
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
@@ -413,5 +568,23 @@ const styles = StyleSheet.create({
     top: 0,
     width: '100%',
     height: '100%',
+  },
+  temporaryShapeContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    pointerEvents: 'none',
+  },
+  svgCanvas: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 5,
   },
 }); 
