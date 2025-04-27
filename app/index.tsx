@@ -16,9 +16,8 @@ import * as SplashScreenModule from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { DrawingToolbar, DRAW_MODES } from '@/components/DrawingToolbar';
 import { AppHeader } from '@/components/AppHeader';
-import { ToolBar } from '@/components/ToolBar';
+import { ToolBar, DRAW_MODES } from '@/components/ToolBar';
 import Svg, { 
   Path, 
   Rect, 
@@ -489,20 +488,6 @@ export default function DrawingScreen() {
         </View>
       </View>
       
-      <DrawingToolbar
-        toolbarVisible={toolbarVisible}
-        selectedColor={selectedColor}
-        brushSize={brushSize}
-        colors={colors}
-        selectedShape={selectedShape}
-        setBrushSize={setBrushSize}
-        setSelectedColor={setSelectedColor}
-        setToolbarVisible={setToolbarVisible}
-        setSelectedShape={setSelectedShape}
-        currentDrawMode={currentDrawMode}
-        setCurrentDrawMode={setCurrentDrawMode}
-      />
-      
       <ToolBar
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
@@ -510,6 +495,13 @@ export default function DrawingScreen() {
         visible={!headerVisible}
         currentSize={brushSize}
         recentPencilSizes={recentPencilSizes}
+        selectedColor={selectedColor}
+        colors={colors}
+        setSelectedColor={setSelectedColor}
+        selectedShape={selectedShape}
+        setSelectedShape={setSelectedShape}
+        currentDrawMode={currentDrawMode}
+        setCurrentDrawMode={setCurrentDrawMode}
       />
     </ThemedView>
   );
