@@ -34,10 +34,10 @@ interface ToolBarProps {
   onUndo: () => void;
   onToggleTool: (isPencil: boolean, size?: number) => void;
 
-  isPencilActive: boolean;
+  isPencilActive?: boolean;
   visible: boolean;
   brushSize: number;
-  recentPencilSizes: number[];
+  recentPencilSizes?: number[];
     
   selectedColor: string;
   colors: string[];
