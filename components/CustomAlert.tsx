@@ -17,9 +17,9 @@ interface AlertButtonProps {
 
 interface CustomAlertProps {
   visible: boolean;
-  title: string;
-  message: string;
-  buttons: AlertButtonProps[];
+  title?: string;
+  message?: string;
+  buttons?: AlertButtonProps[];
   onDismiss: () => void;
 }
 

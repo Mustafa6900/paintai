@@ -1,42 +1,39 @@
 interface TextContent {
   save: {
     title: string;
+    successTitle: string;
+    successMessage: string;
+    errorTitle: string;
+    errorMessage: string;
   };
   share: {
     title: string;
+    successTitle: string;
+    successMessage: string;
+    errorTitle: string;
+    errorMessage: string;
+    shareTitle: string;
+    shareMessage: string;
+  };
+  imageUpload: {
+    title: string;
+    message: string;
+    successTitle: string;
+    successMessage: string;
+    errorTitle: string;
+    errorMessage: string;
+    requestPermissionTitle: string;
+    requestPermissionMessage: string;
+    requestPermissionErrorTitle: string;
+    requestPermissionErrorMessage: string;
   };
   clear: {
     title: string;
-  };
-  confirmClear: {
-    title: string;
-    message: string;
+    confirmTitle: string;
+    confirmMessage: string;
     confirm: string;
     cancel: string;
   };
-  saveSuccess: {
-    title: string;
-    message: string;
-    confirm: string;
-  };
-  saveError: {
-    title: string;
-    message: string;
-  };
-  shareSuccess: {
-    title: string;
-    message: string;
-  };
-  shareCancel: {
-    title: string;
-    message: string;
-  };
-  shareError: {
-    title: string;
-    message: string;
-  };
-  shareMessage: string;
-  shareTitle: string;
 }
 
 interface Localization {
@@ -47,83 +44,77 @@ interface Localization {
 export const texts: Localization = {
   tr: {
     save: {
-      title: 'Kaydet'
+      title: 'Kaydet',
+      successTitle: 'Başarılı',
+      successMessage: 'Çizim kaydedildi.',
+      errorTitle: 'Hata',
+      errorMessage: 'Çizim kaydedilemedi.'
     },
     share: {
-      title: 'Paylaş'
+      title: 'Paylaş',
+      successTitle: 'Başarılı',
+      successMessage: 'Çizim paylaşıldı.',
+      errorTitle: 'Hata',
+      errorMessage: 'Çizim paylaşılamadı.',
+      shareTitle: 'Çizimimi Paylaş',
+      shareMessage: 'PaintAI ile çizimim'
+    },
+    imageUpload: {
+      title: 'Resim Ekle',
+      message: 'Lütfen eklemek istediğiniz resmi seçin',
+      successTitle: 'Başarılı',
+      successMessage: 'Resim başarıyla eklendi!',
+      errorTitle: 'Hata',
+      errorMessage: 'Resim ekleme hatası!',
+      requestPermissionTitle: 'Galeri erişim izni iste',
+      requestPermissionMessage: 'Resim eklemek için galeri erişim izni gereklidir.',
+      requestPermissionErrorTitle: 'Hata',
+      requestPermissionErrorMessage: 'Resim eklemek için galeri erişim izni gereklidir.'
     },
     clear: {
-      title: 'Temizle'
-    },
-    confirmClear: {
-      title: 'Tüm çizimleri temizle',
-      message: 'Tüm çizimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      title: 'Temizle',
+      confirmTitle: 'Tüm çizimleri temizle',
+      confirmMessage: 'Tüm çizimleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       confirm: 'Evet, temizle',
       cancel: 'İptal'
-    },
-    saveSuccess: {
-      title: 'Başarılı',
-      message: 'Çizim galeriye kaydedildi.',
-      confirm: 'Tamam'
-    },
-    saveError: {
-      title: 'Kaydetme Hatası',
-      message: 'Çizim kaydedilemedi.'
-    },
-    shareSuccess: {
-      title: 'Paylaşıldı',
-      message: 'Çizim paylaşıldı.'
-    },
-    shareCancel: {
-      title: 'İptal',
-      message: 'Çizim paylaşılmadı.'
-    },
-    shareError: {
-      title: 'Paylaşma Hatası',
-      message: 'Çizim paylaşılamadı.'
-    },
-    shareMessage: 'PaintAI ile çizimim',
-    shareTitle: 'Çizimimi Paylaş'
+    }
   },
   en: {
     save: {
-      title: 'Save'
+      title: 'Save',
+      successTitle: 'Success',
+      successMessage: 'Drawing saved successfully.',
+      errorTitle: 'Error',
+      errorMessage: 'Drawing could not be saved.'
     },
     share: {
-      title: 'Share'
+      title: 'Share',
+      successTitle: 'Success',
+      successMessage: 'Drawing shared successfully.',
+      errorTitle: 'Error',
+      errorMessage: 'Drawing could not be shared.',
+      shareTitle: 'Share My Drawing',
+      shareMessage: 'My drawing with PaintAI'
+    },
+    imageUpload: {
+      title: 'Add Image',
+      message: 'Please select the image you want to add',
+      requestPermissionTitle: 'Request Gallery Access',
+      successTitle: 'Success',
+      successMessage: 'Image added successfully.',
+      errorTitle: 'Error',
+      errorMessage: 'Image upload error!',
+      requestPermissionMessage: 'Gallery access is required to add images.',
+      requestPermissionErrorTitle: 'Error',
+      requestPermissionErrorMessage: 'Gallery access is required to add images.'
     },
     clear: {
-      title: 'Clear'
-    },
-    confirmClear: {
-      title: 'Clear all drawings',
-      message: 'Are you sure you want to clear all drawings? This action cannot be undone.',
+      title: 'Clear',
+      confirmTitle: 'Clear all drawings',
+      confirmMessage: 'Are you sure you want to clear all drawings? This action cannot be undone.',
       confirm: 'Yes, clear',
       cancel: 'Cancel'
-    },
-    saveSuccess: {
-      title: 'Success',
-      message: 'Drawing saved to gallery.',
-      confirm: 'OK'
-    },
-    saveError: {
-      title: 'Save Error',
-      message: 'Drawing could not be saved.'
-    },
-    shareSuccess: {
-      title: 'Shared',
-      message: 'Drawing has been shared.'
-    },
-    shareCancel: {
-      title: 'Cancelled',
-      message: 'Drawing was not shared.'
-    },
-    shareError: {
-      title: 'Share Error',
-      message: 'Could not share drawing.'
-    },
-    shareMessage: 'My drawing with PaintAI',
-    shareTitle: 'Share My Drawing'
+    }
   }
 };
 

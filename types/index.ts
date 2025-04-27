@@ -56,4 +56,15 @@ export const SHAPES = [
   { id: 'ellipse', name: 'Ellipse', icon: '🔵' },
   { id: 'pentagon', name: 'Pentagon', icon: '⬟' },
   { id: 'hexagon', name: 'Hexagon', icon: '⬢' }
-]; 
+];
+
+export const COLORS = [
+  '#000000', '#FFFFFF', '#808080', // Black, White, Gray
+  '#FF0000', '#FF4500', '#FF6347', // Red shades
+  '#FFA500', '#FFD700', '#FFFF00', // Orange and yellow
+  '#32CD32', '#00FF00', '#008000', // Green shades
+  '#00FFFF', '#00BFFF', '#0000FF', // Blue shades
+  '#800080', '#9370DB', '#FF00FF', // Purple shades
+  '#FFDAB9', // Peach
+  '#A52A2A', '#8B4513', '#CD853F'  // Brown shades
+];

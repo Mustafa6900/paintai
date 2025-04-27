@@ -16,7 +16,7 @@ export function useCanvasShare(clearCanvas: () => void) {
   });
 
   // Alert function
-  const showAlert = (title: string, message: string, buttons = [{ text: t('confirmClear.confirm'), onPress: () => { }, style: 'default' as const }]) => {
+  const showAlert = (title: string, message: string, buttons = [{ text: t('clear.confirm'), onPress: () => { }, style: 'default' as const }]) => {
     setAlertConfig({
       visible: true,
       title,
@@ -32,11 +32,11 @@ export function useCanvasShare(clearCanvas: () => void) {
       const { status } = await MediaLibrary.requestPermissionsAsync();
 
       if (status !== 'granted') {
-        showAlert(t('saveError.title'), t('saveError.message'));
+        showAlert(t('save.errorTitle'), t('save.errorMessage'));
         return;
       }
 
-      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
+      showAlert(t('save.successTitle'), t('save.successMessage'));
 
       await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -47,9 +47,9 @@ export function useCanvasShare(clearCanvas: () => void) {
       });
 
       const asset = await MediaLibrary.createAssetAsync(uri);
-      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
+      showAlert(t('save.successTitle'), t('save.successMessage'));
     } catch (error) {
-      showAlert(t('saveError.title'), t('saveError.message'));
+      showAlert(t('save.errorTitle'), t('save.errorMessage'));
     }
   };
 
@@ -86,31 +86,31 @@ export function useCanvasShare(clearCanvas: () => void) {
 
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
-          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+          showAlert(t('share.successTitle'), t('share.successMessage'));
         } else {
-          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+          showAlert(t('share.successTitle'), t('share.successMessage'));
         }
       } else if (result.action === Share.dismissedAction) {
-        showAlert(t('shareCancel.title'), t('shareCancel.message'));
+        showAlert(t('share.errorTitle'), t('share.errorMessage'));
       }
     } catch (error) {
-      showAlert(t('shareError.title'), t('shareError.message'));
+      showAlert(t('share.errorTitle'), t('share.errorMessage'));
     }
   };
 
   // Clear confirmation function
   const handleClearRequest = () => {
     showAlert(
-      t('confirmClear.title'),
-      t('confirmClear.message'),
+      t('clear.confirmTitle'),
+      t('clear.confirmMessage'),
       [
         {
-          text: t('confirmClear.cancel'),
+          text: t('clear.cancel'),
           onPress: () => { },
           style: 'default' as const
         },
         {
-          text: t('confirmClear.confirm'),
+          text: t('clear.confirm'),
           onPress: clearCanvas,
           style: 'default' as const
         }

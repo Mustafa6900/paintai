@@ -4,14 +4,15 @@ import {
   View, 
   PanResponder, 
   Share, 
-  Animated,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import * as SplashScreenModule from 'expo-splash-screen';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { ToolBar, DRAW_MODES } from '@/components/ToolBar';
+import { ToolBar } from '@/components/ToolBar/ToolBar';
+import { DRAW_MODES, DrawingLine, Point, ShapeData, AlertConfig, COLORS } from '@/types';
 import Svg, { 
   Path, 
   Rect, 
@@ -22,46 +23,9 @@ import Svg, {
 } from 'react-native-svg';
 import { CustomAlert } from '@/components/CustomAlert';
 import { t } from '@/locales';
+import * as ImagePicker from 'expo-image-picker';
 
 SplashScreenModule.preventAutoHideAsync();
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface DrawingLine {
-  points: Point[];
-  color: string;
-  thickness: number;
-  tool: string;
-  path?: string;
-}
-
-interface ShapeData {
-  id: string;
-  type: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  color: string;
-  strokeWidth: number;
-}
-
-interface AlertButton {
-  text: string;
-  onPress: () => void;
-  style?: 'default' | 'cancel' | 'destructive';
-}
-
-interface AlertConfig {
-  visible: boolean;
-  title: string;
-  message: string;
-  buttons: AlertButton[];
-  onDismiss: () => void;
-}
 
 export default function DrawingScreen() {
   const [lines, setLines] = useState<DrawingLine[]>([]);
@@ -69,13 +33,12 @@ export default function DrawingScreen() {
   const [shapes, setShapes] = useState<ShapeData[]>([]);
   const [currentShape, setCurrentShape] = useState<ShapeData | null>(null);
   const [selectedColor, setSelectedColor] = useState('#000000');
+  const [lastPencilColor, setLastPencilColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
-  const [toolbarVisible, setToolbarVisible] = useState(true);
-  const toolbarHeight = useRef(new Animated.Value(1)).current;
-  const [isPencilActive, setIsPencilActive] = useState(true);
   const [recentPencilSizes, setRecentPencilSizes] = useState([5, 10, 15]);
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
   const [currentDrawMode, setCurrentDrawMode] = useState(DRAW_MODES.PENCIL);
+  const [colors, setColors] = useState(COLORS);
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
     visible: false,
     title: '',
@@ -83,17 +46,7 @@ export default function DrawingScreen() {
     buttons: [],
     onDismiss: () => {}
   });
-  
-  const colors = [
-    '#000000', '#FFFFFF', '#808080', // Black, White, Gray
-    '#FF0000', '#FF4500', '#FF6347', // Red shades
-    '#FFA500', '#FFD700', '#FFFF00', // Orange and yellow
-    '#32CD32', '#00FF00', '#008000', // Green shades
-    '#00FFFF', '#00BFFF', '#0000FF', // Blue shades
-    '#800080', '#9370DB', '#FF00FF', // Purple shades
-    '#FFDAB9', // Peach
-    '#A52A2A', '#8B4513', '#CD853F'  // Brown shades
-  ];
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
   const canvasRef = useRef(null);
 
@@ -251,7 +204,7 @@ export default function DrawingScreen() {
   };
 
   // Alert Helper Function
-  const showAlert = (title: string, message: string, buttons = [{ text: t('saveSuccess.confirm'), onPress: () => {}, style: 'default' as const }]) => {
+  const showAlert = (title: string, message: string, buttons = [{ text: t('save.successTitle'), onPress: () => {}, style: 'default' as const }]) => {
     setAlertConfig({
       visible: true,
       title,
@@ -267,11 +220,11 @@ export default function DrawingScreen() {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       
       if (status !== 'granted') {
-        showAlert(t('saveError.title'), t('saveError.message'));
+        showAlert(t('save.errorTitle'), t('save.errorMessage'));
         return;
       }
       
-      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
+      showAlert(t('save.successTitle'), t('save.successMessage'));
       
       await new Promise(resolve => setTimeout(resolve, 200));
       
@@ -282,9 +235,9 @@ export default function DrawingScreen() {
       });
       
       const asset = await MediaLibrary.createAssetAsync(uri);
-      showAlert(t('saveSuccess.title'), t('saveSuccess.message'));
+      showAlert(t('save.successTitle'), t('save.successMessage'));
     } catch (error) {
-      showAlert(t('saveError.title'), t('saveError.message'));
+      showAlert(t('save.errorTitle'), t('save.errorMessage'));
     }
   };
 
@@ -321,31 +274,31 @@ export default function DrawingScreen() {
       
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
-          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+          showAlert(t('share.successTitle'), t('share.successMessage'));
         } else {
-          showAlert(t('shareSuccess.title'), t('shareSuccess.message'));
+          showAlert(t('share.successTitle'), t('share.successMessage'));
         }
       } else if (result.action === Share.dismissedAction) {
-        showAlert(t('shareCancel.title'), t('shareCancel.message'));
+        showAlert(t('share.errorTitle'), t('share.errorMessage'));
       }
     } catch (error) {
-      showAlert(t('shareError.title'), t('shareError.message'));
+      showAlert(t('share.errorTitle'), t('share.errorMessage'));
     }
   };
 
   // Clear function
   const handleClearRequest = () => {
     showAlert(
-      t('clearConfirm.title'),
-      t('clearConfirm.message'),
+      t('clear.confirmTitle'),
+      t('clear.confirmMessage'),
       [
         {
-          text: t('clearCancel.title'),
+          text: t('clear.cancel'),
           onPress: () => {},
           style: 'default' as const
         },
         {
-          text: t('clearConfirm.title'),
+          text: t('clear.confirm'),
           onPress: clearCanvas,
           style: 'default' as const
         }
@@ -353,18 +306,39 @@ export default function DrawingScreen() {
     );
   };
 
-  // Toolbar visibility
-  useEffect(() => {
-    Animated.timing(toolbarHeight, {
-      toValue: toolbarVisible ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false
-    }).start();
-  }, [toolbarVisible]);
+  // Image Upload function
+  const handleAddImage = async () => {
+    try {
+      // Galeri izinlerini iste
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        showAlert(
+          t('imageUpload.requestPermissionErrorTitle'), 
+          t('imageUpload.requestPermissionErrorMessage')
+        );
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setBackgroundImage(result.assets[0].uri);
+        showAlert(t('imageUpload.successTitle'), t('imageUpload.successMessage'));
+      }
+    } catch (error) {
+      showAlert(
+        t('imageUpload.errorTitle'), 
+        t('imageUpload.errorMessage')
+      );
+    }
+  };
 
-  const handleToggleTool = (isPencil: boolean, size?: number) => {
-    setIsPencilActive(isPencil);
-    
+  const handleToggleTool = (isPencil: boolean, size?: number) => {    
     // If size change, apply
     if (size) {
       setBrushSize(size);
@@ -376,10 +350,15 @@ export default function DrawingScreen() {
     
     // Color change (for eraser, white)
     if (!isPencil) {
+      // Silgiye geçerken, mevcut rengi kaydet (beyaz değilse)
+      if (selectedColor !== '#FFFFFF') {
+        setLastPencilColor(selectedColor);
+      }
       setSelectedColor('#FFFFFF');
     } else {
+      // Kaleme geçerken, önceki kalem rengini geri yükle
       if (selectedColor === '#FFFFFF') {
-        setSelectedColor('#000000');
+        setSelectedColor(lastPencilColor);
       }
     }
   };
@@ -397,6 +376,15 @@ export default function DrawingScreen() {
       // Yeni boyutu en başa ekle ve sadece 3 boyut tut
       const newSizes = [newSize, ...recentPencilSizes].slice(0, 3);
       setRecentPencilSizes(newSizes);
+    }
+  };
+
+  // Renk seçme fonksiyonunu da güncelleyelim
+  const handleColorChange = (color: string) => {
+    setSelectedColor(color);
+    // Kalem modunda yeni bir renk seçildiğinde, son rengi de güncelle
+    if (currentDrawMode === DRAW_MODES.PENCIL) {
+      setLastPencilColor(color);
     }
   };
 
@@ -513,6 +501,14 @@ export default function DrawingScreen() {
           collapsable={false}
           renderToHardwareTextureAndroid={true}
         >
+          {/* Background image */}
+          {backgroundImage && (
+            <Image 
+              source={{ uri: backgroundImage }} 
+              style={styles.backgroundImage}
+              resizeMode="contain"
+            />
+          )}
           <Svg 
             style={styles.svgCanvas} 
             width="100%" 
@@ -527,20 +523,19 @@ export default function DrawingScreen() {
       <ToolBar
         onUndo={handleUndo}
         onToggleTool={handleToggleTool}
-        isPencilActive={isPencilActive}
-        visible={true}
-        brushSize={brushSize}
-        recentPencilSizes={recentPencilSizes}
-        selectedColor={selectedColor}
-        colors={colors}
-        setSelectedColor={setSelectedColor}
-        selectedShape={selectedShape}
-        setSelectedShape={setSelectedShape}
         currentDrawMode={currentDrawMode}
         setCurrentDrawMode={setCurrentDrawMode}
+        selectedColor={selectedColor}
+        setSelectedColor={handleColorChange}
+        colors={colors}
+        brushSize={brushSize}
+        visible={true}
+        selectedShape={selectedShape}
+        setSelectedShape={setSelectedShape}
         onSave={handleSave}
         onShare={handleShare}
         onClear={handleClearRequest}
+        onAddImage={handleAddImage}
       />
       
       <CustomAlert
@@ -629,5 +624,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'transparent',
     zIndex: 5,
+  },
+  backgroundImage: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
   },
 }); 

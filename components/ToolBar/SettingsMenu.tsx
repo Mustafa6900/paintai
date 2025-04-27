@@ -10,6 +10,7 @@ interface SettingsMenuProps {
   onSave: () => void;
   onShare: () => void;
   onClear: () => void;
+  onAddImage: () => void;
 }
 
 export function SettingsMenu({
@@ -18,7 +19,8 @@ export function SettingsMenu({
   top,
   onSave,
   onShare,
-  onClear
+  onClear,
+  onAddImage
 }: SettingsMenuProps) {
   return (
     <Animated.View 
@@ -42,7 +44,15 @@ export function SettingsMenu({
           onPress={onSave}
         >
           <ThemedText style={styles.settingsButtonIcon}>💾</ThemedText>
-          <ThemedText style={styles.settingsButtonText}>{t('save')}</ThemedText>
+          <ThemedText style={styles.settingsButtonText}>{t('save.title')}</ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.settingsButton} 
+          onPress={onAddImage}
+        >
+          <ThemedText style={styles.settingsButtonIcon}>🖼️</ThemedText>
+          <ThemedText style={styles.settingsButtonText}>{t('imageUpload.title')}</ThemedText>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -50,7 +60,7 @@ export function SettingsMenu({
           onPress={onShare}
         >
           <ThemedText style={styles.settingsButtonIcon}>🚀</ThemedText>
-          <ThemedText style={styles.settingsButtonText}>{t('share')}</ThemedText>
+          <ThemedText style={styles.settingsButtonText}>{t('share.title')}</ThemedText>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -58,7 +68,7 @@ export function SettingsMenu({
           onPress={onClear}
         >
           <ThemedText style={styles.settingsButtonIcon}>🗑️</ThemedText>
-          <ThemedText style={styles.settingsButtonText}>{t('clear')}</ThemedText>
+          <ThemedText style={styles.settingsButtonText}>{t('clear.title')}</ThemedText>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -87,6 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     padding: 8,
+    
     backgroundColor: '#FFECB3',
     borderRadius: 8,
     marginVertical: 4,

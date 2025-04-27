@@ -26,6 +26,7 @@ interface ToolBarProps {
   onSave: () => void;
   onShare: () => void;
   onClear: () => void;
+  onAddImage: () => void;
 }
 
 export function ToolBar({
@@ -42,7 +43,8 @@ export function ToolBar({
   setSelectedShape,
   onSave,
   onShare,
-  onClear
+  onClear,
+  onAddImage
 }: ToolBarProps) {
   const [showPencilSizes, setShowPencilSizes] = useState(false);
   const [showEraserSizes, setShowEraserSizes] = useState(false);
@@ -222,6 +224,12 @@ export function ToolBar({
   const selectColor = (color: string) => {
     setSelectedColor(color);
     closeAllMenus();
+    
+    // When a color is selected, switch to pencil mode
+    if (currentDrawMode !== DRAW_MODES.PENCIL) {
+      setCurrentDrawMode(DRAW_MODES.PENCIL);
+      onToggleTool(true);
+    }
   };
   
   const selectShape = (shapeId: string) => {
@@ -324,6 +332,7 @@ export function ToolBar({
       />
       
       {/* Shapes Menu */}
+      {/*
       <Animated.View 
         style={[
           styles.shapesMenu,
@@ -354,6 +363,7 @@ export function ToolBar({
           ))}
         </View>
       </Animated.View>
+      */}
       
       {/* Settings Menu */}
       <SettingsMenu
@@ -363,6 +373,7 @@ export function ToolBar({
         onSave={onSave}
         onShare={onShare}
         onClear={onClear}
+        onAddImage={onAddImage}
       />
       
       {/* Main Toolbar */}
@@ -419,6 +430,7 @@ export function ToolBar({
           ]} />
         </TouchableOpacity>
         
+        {/*
         <TouchableOpacity 
           ref={shapeButtonRef}
           onLayout={onShapeButtonLayout}
@@ -430,6 +442,7 @@ export function ToolBar({
         >
           <ThemedText style={styles.toolButtonIcon}>📐</ThemedText>
         </TouchableOpacity>
+        */}
       </Animated.View>
     </View>
   );
