@@ -95,7 +95,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   loadingContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 20,
     borderRadius: 10,
     alignItems: 'center',
@@ -104,6 +103,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  processingTip: {
+    marginTop: 10,
+    fontSize: 14,
+    color: 'gray',
   },
   resultContainer: {
     width: '90%',
@@ -130,10 +134,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   saveButton: {
-    backgroundColor: 'rgba(41, 182, 246, 0.8)',
+    backgroundColor: '#FFECB3',
+    borderWidth: 1,
+    borderColor: '#FFC107',
   },
   closeButton: {
     backgroundColor: 'rgba(255, 59, 48, 0.8)',
+    borderWidth: 1,
+    borderColor: '#FFC107',
   },
   iconButtonText: {
     fontSize: 20,

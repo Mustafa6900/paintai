@@ -39,10 +39,15 @@ interface TextContent {
     title: string;
     processingTitle: string;
     processingMessage: string;
+    processingHint: string;
     successTitle: string;
     successMessage: string;
     errorTitle: string;
     errorMessage: string;
+    networkErrorTitle: string;
+    networkErrorMessage: string;
+    timeoutTitle: string;
+    timeoutMessage: string;
     saveResult: string;
     discard: string;
     saveSuccessTitle: string;
@@ -97,10 +102,15 @@ export const texts: Localization = {
       title: 'AI Dönüşüm',
       processingTitle: 'İşleniyor',
       processingMessage: '{style} stilinde işleniyor...',
+      processingHint: 'Bu işlem birkaç dakika sürebilir. Lütfen bekleyin.',
       successTitle: 'Tamamlandı',
       successMessage: 'AI dönüşümü başarıyla tamamlandı!',
       errorTitle: 'Hata',
       errorMessage: 'AI dönüşümü sırasında bir hata oluştu.',
+      networkErrorTitle: 'Bağlantı Hatası',
+      networkErrorMessage: 'İnternet bağlantınızı kontrol edip tekrar deneyin.',
+      timeoutTitle: 'Zaman Aşımı',
+      timeoutMessage: 'İşlem çok uzun sürdü. Lütfen daha sonra tekrar deneyin.',
       saveResult: 'Sonucu Kaydet',
       discard: 'İptal Et',
       saveSuccessTitle: 'AI Görüntü Kaydedildi',
@@ -148,10 +158,15 @@ export const texts: Localization = {
       title: 'AI Transformation',
       processingTitle: 'Processing',
       processingMessage: 'Processing in {style} style...',
+      processingHint: 'This may take a few minutes. Please wait.',
       successTitle: 'Completed',
       successMessage: 'AI transformation completed successfully!',
       errorTitle: 'Error',
-      errorMessage: 'AI transformation error!',
+      errorMessage: 'An error occurred during AI transformation.',
+      networkErrorTitle: 'Connection Error',
+      networkErrorMessage: 'Please check your internet connection and try again.',
+      timeoutTitle: 'Timeout',
+      timeoutMessage: 'The process took too long. Please try again later.',
       saveResult: 'Save Result',
       discard: 'Discard',
       saveSuccessTitle: 'AI Image Saved',
