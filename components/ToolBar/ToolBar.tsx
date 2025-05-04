@@ -14,6 +14,7 @@ import { ColorPalette } from './ColorPalette';
 import { SettingsMenu } from './SettingsMenu';
 import { DRAW_MODES, SHAPES, AI_STYLES, AIStyle, ToolBarProps, imageLoadingCache } from '@/types';
 import { t } from '@/locales';
+import { AIStylesMenu } from './AIStylesMenu';
 
 export function ToolBar({
   onUndo,
@@ -251,51 +252,18 @@ export function ToolBar({
     closeAllMenus();
   };
   
-  const AIStyleOption = ({ style, onSelect }: { style: AIStyle, onSelect: () => void }) => {
-    const cachedState = imageLoadingCache[style.id] || { loaded: false, error: false };
-    
-    const [isLoading, setIsLoading] = useState(!cachedState.loaded);
-    const [hasError, setHasError] = useState(cachedState.error);
-
-    return (
-      <TouchableOpacity 
-        key={`ai-style-${style.id}`}
-        style={styles.aiStyleOption} 
-        onPress={onSelect}
-      >
-        {isLoading && (
-          <View style={styles.aiStyleIconPlaceholder}>
-            <ActivityIndicator size="large" color="#FFC107" />
-          </View>
-        )}
-        <Image 
-          source={style.icon} 
-          style={[
-            styles.aiStyleIcon,
-            isLoading ? { height: 0 } : null
-          ]} 
-          resizeMode="cover"
-          onLoad={() => {
-            imageLoadingCache[style.id] = { loaded: true, error: false };
-            setIsLoading(false);
-          }}
-          onError={() => {
-            imageLoadingCache[style.id] = { loaded: true, error: true };
-            setIsLoading(false);
-            setHasError(true);
-          }}
-        />
-        {hasError && (
-          <View style={styles.aiStyleIconFallback}>
-            <ThemedText style={styles.aiStyleName}>{style.name}</ThemedText>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-  
   return (
     <View style={styles.mainContainer}>
+      {/* Color Palette Menu */}
+      <ColorPalette
+        visible={showColorPalette}
+        animation={colorPaletteAnimation}
+        top={colorButtonTop}
+        colors={colors}
+        selectedColor={selectedColor}
+        onSelectColor={selectColor}
+      />
+
       {/* Pencil Size Menu */}
       <Animated.View 
         style={[
@@ -377,16 +345,6 @@ export function ToolBar({
         </View>
       </Animated.View>
       
-      {/* Color Palette Menu */}
-      <ColorPalette
-        visible={showColorPalette}
-        animation={colorPaletteAnimation}
-        top={colorButtonTop}
-        colors={colors}
-        selectedColor={selectedColor}
-        onSelectColor={selectColor}
-      />
-      
       {/* Shapes Menu */}
       {/*
       <Animated.View 
@@ -433,31 +391,13 @@ export function ToolBar({
       />
       
       {/* AI Styles Menu */}
-      <Animated.View 
-        style={[
-          styles.aiStylesMenu,
-          {
-            opacity: aiStylesAnimation,
-            width: aiStylesAnimation.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 250]
-            }),
-            right: 55,
-            top: aiButtonTop,
-            display: showAIStyles ? 'flex' : 'none'
-          }
-        ]}
-      >
-        <ScrollView contentContainerStyle={styles.aiStylesWrapper}>
-          {AI_STYLES.map((style) => (
-            <AIStyleOption 
-              key={`ai-style-option-${style.id}`}
-              style={style} 
-              onSelect={() => selectAIStyle(style.id)}
-            />
-          ))}
-        </ScrollView>
-      </Animated.View>
+      <AIStylesMenu
+        visible={showAIStyles}
+        animation={aiStylesAnimation}
+        top={aiButtonTop}
+        aiStyles={AI_STYLES}
+        onSelectStyle={selectAIStyle}
+      />
       
       {/* Main Toolbar */}
       <Animated.View style={[
@@ -486,8 +426,16 @@ export function ToolBar({
           <ThemedText style={styles.toolButtonIcon}>⚙️</ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.toolButton} onPress={onUndo}>
-          <ThemedText style={styles.toolButtonIcon}>↩️</ThemedText>
+        <TouchableOpacity 
+          ref={colorButtonRef}
+          onLayout={onColorButtonLayout}
+          style={styles.toolButton}
+          onPress={handleColorPress}
+        >
+          <View style={[
+            styles.colorButtonIndicator, 
+            { backgroundColor: selectedColor }
+          ]} />
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -513,17 +461,9 @@ export function ToolBar({
         >
           <ThemedText style={styles.toolButtonIcon}>🧽</ThemedText>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          ref={colorButtonRef}
-          onLayout={onColorButtonLayout}
-          style={styles.toolButton}
-          onPress={handleColorPress}
-        >
-          <View style={[
-            styles.colorButtonIndicator, 
-            { backgroundColor: selectedColor }
-          ]} />
+
+         <TouchableOpacity style={styles.toolButton} onPress={onUndo}>
+          <ThemedText style={styles.toolButtonIcon}>↩️</ThemedText>
         </TouchableOpacity>
         
         {/*

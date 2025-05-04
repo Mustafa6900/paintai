@@ -14,7 +14,7 @@ import { ThemedView } from '@/components/ThemedView';
 import * as SplashScreenModule from 'expo-splash-screen';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { ToolBar } from '@/components/ToolBar/ToolBar';
+import { ToolBar } from '@/components/ToolBar';
 import { DRAW_MODES, DrawingLine, Point, ShapeData, AlertConfig, COLORS, AI_STYLES } from '@/types';
 import Svg, { 
   Path, 
@@ -28,6 +28,8 @@ import { CustomAlert } from '@/components/CustomAlert';
 import { t } from '@/locales';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/ThemedText';
+import { AIProcessor, handleSaveAIImage } from '@/components/ToolBar/AIProcessor';
+import { processAIStyle, getStyleName } from '@/services/aiService';
 
 SplashScreenModule.preventAutoHideAsync();
 
@@ -551,64 +553,52 @@ export default function DrawingScreen() {
     });
   };
 
-  // AI Generate
+  // Ai Generate function
   const handleApplyAIStyle = async (styleId: string) => {
     try {
       setIsAIProcessing(true);
       
-      const uri = await captureRef(canvasRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
-      // Api endpoint 
-
       showAlertNoButtons(
         t('ai.processingTitle'), 
-        t('ai.processingMessage', { style: AI_STYLES.find(style => style.id === styleId)?.name || 'Unknown' })
+        t('ai.processingMessage', { style: getStyleName(styleId) })
       );
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await processAIStyle(canvasRef, styleId);
       
-      setAiProcessedImage(uri);
-      
-      setIsAIProcessing(false);
-      
-      showAlert(
-        t('ai.successTitle'), 
-        t('ai.successMessage'),
-        [
-          {
-            text: t('ok'),
-            onPress: () => setAiProcessedImage(null),
-            style: 'default' as const
-          }
-        ]
-      );
+      if (result.success && result.imageUri) {
+        setAiProcessedImage(result.imageUri);
+        
+        showAlert(
+          t('ai.successTitle'), 
+          t('ai.successMessage'),
+          [
+            {
+              text: t('ok'),
+              onPress: () => setAiProcessedImage(null),
+              style: 'default' as const
+            }
+          ]
+        );
+      } else {
+        showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+      }
     } catch (error) {
-      setIsAIProcessing(false);
       showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+    } finally {
+      setIsAIProcessing(false);
     }
   };
 
-  // AI Generate Save Image
-  const handleSaveAIImage = async () => {
-    if (!aiProcessedImage) return;
-    
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      
-      if (status !== 'granted') {
-        showAlert(t('save.errorTitle'), t('save.errorMessage'));
-        return;
-      }
-      
-      await MediaLibrary.createAssetAsync(aiProcessedImage);
-      setAiProcessedImage(null);
-      showAlert(t('save.successTitle'), t('save.successMessage'));
-    } catch (error) {
-      showAlert(t('save.errorTitle'), t('save.errorMessage'));
-    }
+  const saveAIImage = async () => {
+    await handleSaveAIImage(
+      aiProcessedImage, 
+      showAlert,
+      () => setAiProcessedImage(null)
+    );
+  };
+
+  const closeAIImage = () => {
+    setAiProcessedImage(null);
   };
 
   return (
@@ -689,6 +679,15 @@ export default function DrawingScreen() {
         onClear={handleClearRequest}
         onAddImage={handleAddImage}
         onApplyAIStyle={handleApplyAIStyle}
+      />
+      
+      {/* AI İşlem Sonucu veya Yükleniyor Göstergesi */}
+      <AIProcessor
+        aiProcessedImage={aiProcessedImage}
+        isLoading={isAIProcessing}
+        onClose={closeAIImage}
+        onSave={saveAIImage}
+        showAlert={showAlert}
       />
       
       <CustomAlert
