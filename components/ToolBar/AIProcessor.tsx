@@ -44,7 +44,7 @@ export function AIProcessor({
               style={[styles.iconButton, styles.closeButton]} 
               onPress={onClose}
             >
-              <ThemedText style={styles.iconButtonText}>✖</ThemedText>
+              <ThemedText style={styles.iconButtonText}>✖️</ThemedText>
             </TouchableOpacity>
           </View>
           
