@@ -296,32 +296,25 @@ export default function DrawingScreen() {
     }
   }, [currentDrawMode]);
 
-  // Ai işleme fonksiyonu
+  // Ai function
   const handleApplyAIStyle = useCallback(async (styleId: string) => {
     try {
       setIsAIProcessing(true);
       
-      showAlertNoButtons(
-        t('ai.processingTitle'), 
-        t('ai.processingMessage', { style: getStyleName(styleId) })
-      );
+      setAlertConfig({
+        visible: true,
+        title: t('ai.processingTitle'),
+        message: t('ai.processingMessage', { style: getStyleName(styleId) }),
+        buttons: [],
+        onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+      });
       
       const result = await processAIStyle(canvasRef, styleId);
       
       if (result.success && result.imageUri) {
         setAiProcessedImage(result.imageUri);
         
-        showAlert(
-          t('ai.successTitle'), 
-          t('ai.successMessage'),
-          [
-            {
-              text: t('ok'),
-              onPress: () => setAiProcessedImage(null),
-              style: 'default' as const
-            }
-          ]
-        );
+        setAlertConfig(prev => ({ ...prev, visible: false }));
       } else {
         showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
       }
@@ -330,7 +323,7 @@ export default function DrawingScreen() {
     } finally {
       setIsAIProcessing(false);
     }
-  }, [showAlert, showAlertNoButtons, canvasRef]);
+  }, [showAlert, canvasRef]);
 
   const saveAIImage = useCallback(async () => {
     await handleSaveAIImage(
@@ -344,12 +337,11 @@ export default function DrawingScreen() {
     setAiProcessedImage(null);
   }, []);
 
-  // Çizgilerin render edilmesi memoize edildi
+  // Lines render
   const renderLines = useCallback(() => {
     return (
       <Svg style={StyleSheet.absoluteFill}>
         {lines.map((line, index) => {
-          // Tek nokta çizimi için
           if (line.points.length === 1) {
             const point = line.points[0];
             return (
@@ -397,7 +389,7 @@ export default function DrawingScreen() {
     );
   }, [lines, currentLine, currentDrawMode, selectedColor, brushSize, createPathFromPoints]);
 
-  // Şekillerin render edilmesi memoize edildi
+  // Shapes render
   const renderShapes = useCallback(() => {
     const allShapes = [...shapes];
     if (currentShape) allShapes.push(currentShape);
@@ -414,7 +406,7 @@ export default function DrawingScreen() {
       const width = maxX - minX;
       const height = maxY - minY;
       
-      // Şekil tipine göre render
+      // Shape type render
       switch (type) {
         case 'rectangle':
           return (
@@ -499,7 +491,7 @@ export default function DrawingScreen() {
     });
   }, [shapes, currentShape]);
 
-  // PanResponder'ı useMemo ile optimize ediyoruz
+  // PanResponder
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onPanResponderGrant: (evt) => {
@@ -564,7 +556,7 @@ export default function DrawingScreen() {
     }
   }), [currentDrawMode, selectedShape, currentShape, currentLine, selectedColor, brushSize, createPathFromPoints]);
 
-  // Ana SVG bileşeni memoization
+  // Main SVG component
   const mainSvgCanvas = useMemo(() => (
     <Svg 
       style={[
@@ -579,7 +571,7 @@ export default function DrawingScreen() {
     </Svg>
   ), [renderLines, renderShapes, isAIProcessing, aiProcessedImage]);
 
-  // Arkaplan görüntü bileşeni
+  // Background image component
   const backgroundImageComponent = useMemo(() => (
     backgroundImage ? (
       <Image 
@@ -593,7 +585,7 @@ export default function DrawingScreen() {
     ) : null
   ), [backgroundImage, imageScale, imageFitMode]);
 
-  // AI işlenmiş görüntü bileşeni
+  // AI processed image component
   const aiProcessedImageComponent = useMemo(() => (
     aiProcessedImage ? (
       <Image 
@@ -686,7 +678,7 @@ export default function DrawingScreen() {
         onApplyAIStyle={handleApplyAIStyle}
       />
       
-      {/* AI İşlem Sonucu veya Yükleniyor Göstergesi */}
+      {/* AI Process Result or Loading Indicator */}
       <AIProcessor
         aiProcessedImage={aiProcessedImage}
         isLoading={isAIProcessing}

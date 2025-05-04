@@ -5,7 +5,8 @@ import {
   Text,
   TouchableOpacity,
   Modal,
-  Dimensions
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { t } from '@/locales';
 
@@ -42,6 +43,8 @@ export function CustomAlert({
     if (onDismiss) onDismiss();
   };
 
+  const showLoading = buttons.length === 0; // If no buttons, show loading
+
   return (
     <Modal
       transparent={true}
@@ -56,6 +59,15 @@ export function CustomAlert({
         <View style={styles.alertView}>
           <Text style={styles.titleText}>{title}</Text>
           <Text style={styles.messageText}>{message}</Text>
+          
+          {/* Loading indicator */}
+          {showLoading && (
+            <ActivityIndicator 
+              size="large" 
+              color="#FFC107" 
+              style={styles.loadingIndicator} 
+            />
+          )}
           
           <View style={styles.buttonsContainer}>
             {buttons.map((button, index) => (
@@ -149,5 +161,8 @@ const styles = StyleSheet.create({
   },
   destructiveButtonText: {
     color: '#D32F2F',
+  },
+  loadingIndicator: {
+    marginVertical: 15,
   },
 }); 

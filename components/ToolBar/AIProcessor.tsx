@@ -32,25 +32,27 @@ export function AIProcessor({
         </View>
       ) : (
         <View style={styles.resultContainer}>
+          <View style={styles.topButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.iconButton, styles.saveButton]} 
+              onPress={onSave}
+            >
+              <ThemedText style={styles.iconButtonText}>💾</ThemedText>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.iconButton, styles.closeButton]} 
+              onPress={onClose}
+            >
+              <ThemedText style={styles.iconButtonText}>✖</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
           <Image 
             source={{ uri: aiProcessedImage || '' }} 
             style={styles.resultImage} 
             resizeMode="contain"
           />
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.saveButton]} 
-              onPress={onSave}
-            >
-              <ThemedText style={styles.buttonText}>{t('ai.saveImage')}</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.closeButton]} 
-              onPress={onClose}
-            >
-              <ThemedText style={styles.buttonText}>{t('ai.close')}</ThemedText>
-            </TouchableOpacity>
-          </View>
         </View>
       )}
     </View>
@@ -74,7 +76,7 @@ export async function handleSaveAIImage(
     
     await MediaLibrary.createAssetAsync(aiProcessedImage);
     onImageSaved();
-    showAlert(t('save.successTitle'), t('save.successMessage'));
+    showAlert(t('ai.saveSuccessTitle'), t('ai.saveSuccessMessage'));
   } catch (error) {
     showAlert(t('save.errorTitle'), t('save.errorMessage'));
   }
@@ -105,37 +107,41 @@ const styles = StyleSheet.create({
   },
   resultContainer: {
     width: '90%',
-    height: '80%',
+    height: '90%',
     backgroundColor: 'white',
     borderRadius: 10,
     overflow: 'hidden',
     alignItems: 'center',
+    position: 'relative',
+  },
+  topButtonsContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    zIndex: 100,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  saveButton: {
+    backgroundColor: 'rgba(41, 182, 246, 0.8)',
+  },
+  closeButton: {
+    backgroundColor: 'rgba(255, 59, 48, 0.8)',
+  },
+  iconButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
   },
   resultImage: {
     width: '100%',
-    height: '90%',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    padding: 10,
-  },
-  actionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButton: {
-    backgroundColor: '#29B6F6',
-  },
-  closeButton: {
-    backgroundColor: '#FF5722',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    height: '100%',
   },
 }); 

@@ -45,6 +45,8 @@ interface TextContent {
     errorMessage: string;
     saveResult: string;
     discard: string;
+    saveSuccessTitle: string;
+    saveSuccessMessage: string;
   };
 }
 
@@ -101,6 +103,8 @@ export const texts: Localization = {
       errorMessage: 'AI dönüşümü sırasında bir hata oluştu.',
       saveResult: 'Sonucu Kaydet',
       discard: 'İptal Et',
+      saveSuccessTitle: 'AI Görüntü Kaydedildi',
+      saveSuccessMessage: 'AI tarafından oluşturulan görüntü galeriye kaydedildi.',
     }
   },
   en: {
@@ -150,6 +154,8 @@ export const texts: Localization = {
       errorMessage: 'AI transformation error!',
       saveResult: 'Save Result',
       discard: 'Discard',
+      saveSuccessTitle: 'AI Image Saved',
+      saveSuccessMessage: 'AI generated image has been saved to gallery.',
     }
   }
 };
