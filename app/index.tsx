@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { 
   StyleSheet,  
   View, 
@@ -34,6 +34,7 @@ import { processAIStyle, getStyleName } from '@/services/aiService';
 SplashScreenModule.preventAutoHideAsync();
 
 export default function DrawingScreen() {
+  // Tüm state tanımlamaları
   const [lines, setLines] = useState<DrawingLine[]>([]);
   const [currentLine, setCurrentLine] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<ShapeData[]>([]);
@@ -55,130 +56,14 @@ export default function DrawingScreen() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [imageScale, setImageScale] = useState(1);
   const [imageFitMode, setImageFitMode] = useState('contain');
-
-  const canvasRef = useRef(null);
-
   const [appIsReady, setAppIsReady] = useState(false);
-
-  // AI transformation
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [aiProcessedImage, setAiProcessedImage] = useState<string | null>(null);
 
-  // Splash screen
-  useEffect(() => {
-    async function prepareApp() {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (e) {
-        console.warn('App loading error', e);
-      } finally {
-        setAppIsReady(true);
-      }
-    }
+  const canvasRef = useRef(null);
 
-    prepareApp();
-  }, []);
-
-  useEffect(() => {
-    async function hideSplashScreen() {
-      if (appIsReady) {
-        await SplashScreenModule.hideAsync();
-      }
-    }
-    
-    hideSplashScreen();
-  }, [appIsReady]);
-
-  if (!appIsReady) {
-    return null;
-  }
-
-  // Clear function
-  const clearCanvas = () => {
-    setLines([]);
-    setCurrentLine([]);
-    setShapes([]);
-    setCurrentShape(null);
-    setBackgroundImage(null);
-  };
-
-  // Undo function
-  const handleUndo = () => {
-    if (shapes.length > 0) {
-      setShapes(prev => prev.slice(0, -1));
-    } else if (lines.length > 0) {
-      setLines(prev => prev.slice(0, -1));
-    } else if (backgroundImage) {
-      setBackgroundImage(null);
-    }
-  };
-
-  // PanResponder create
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => {
-      const { locationX, locationY } = evt.nativeEvent;
-      
-      if (currentDrawMode === DRAW_MODES.SHAPE && selectedShape) {
-        setCurrentShape({
-          id: Date.now().toString(),
-          type: selectedShape,
-          x1: locationX,
-          y1: locationY,
-          x2: locationX,
-          y2: locationY,
-          color: selectedColor,
-          strokeWidth: brushSize
-        });
-      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
-        const newPoint = { x: locationX, y: locationY };
-        setCurrentLine([newPoint]);
-      }
-    },
-    onPanResponderMove: (evt) => {
-      const { locationX, locationY } = evt.nativeEvent;
-      
-      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
-        setCurrentShape(prevShape => 
-          prevShape ? {
-            ...prevShape,
-            x2: locationX,
-            y2: locationY,
-          } : null
-        );
-      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
-        setCurrentLine(prevLine => {
-          const newLine = [...prevLine, { x: locationX, y: locationY }];
-          return newLine;
-        });
-      }
-    },
-    onPanResponderRelease: (evt) => {
-      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
-        setShapes(prevShapes => [...prevShapes, currentShape]);
-        setCurrentShape(null);
-      } else if (currentLine.length > 0) {
-        const pathString = currentLine.length > 1 
-          ? createPathFromPoints(currentLine)
-          : '';
-        
-        setLines(prevLines => [
-          ...prevLines, 
-          {
-            points: currentLine,
-            color: selectedColor,
-            thickness: brushSize,
-            tool: currentDrawMode,
-            path: pathString
-          }
-        ]);
-        
-        setCurrentLine([]);
-      }
-    }
-  });
-
-  const createPathFromPoints = (points: Point[]): string => {
+  // Path oluşturma fonksiyonu memoize edildi
+  const createPathFromPoints = useCallback((points: Point[]): string => {
     if (points.length < 2) return '';
     
     let path = `M ${points[0].x} ${points[0].y}`;
@@ -194,14 +79,277 @@ export default function DrawingScreen() {
     }
     
     return path;
-  };
+  }, []);
 
-  // Drawing render
-  const renderLines = () => {
+  // Fonksiyonlar useCallback ile memoize ediliyor
+  const clearCanvas = useCallback(() => {
+    setLines([]);
+    setCurrentLine([]);
+    setShapes([]);
+    setCurrentShape(null);
+    setBackgroundImage(null);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (shapes.length > 0) {
+      setShapes(prev => prev.slice(0, -1));
+    } else if (lines.length > 0) {
+      setLines(prev => prev.slice(0, -1));
+    } else if (backgroundImage) {
+      setBackgroundImage(null);
+    }
+  }, [shapes.length, lines.length, backgroundImage]);
+
+  // Alert Helper Functions
+  const showAlert = useCallback((title: string, message: string, buttons = [{ text: t('ok'), onPress: () => {}, style: 'default' as const }]) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons,
+      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+    });
+  }, []);
+
+  const showAlertNoButtons = useCallback((title: string, message: string) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons: [],
+      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+    });
+  }, []);
+
+  // Save function
+  const handleSave = useCallback(async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        showAlert(t('save.errorTitle'), t('save.errorMessage'));
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const uri = await captureRef(canvasRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+      
+      await MediaLibrary.createAssetAsync(uri);
+      showAlert(t('save.successTitle'), t('save.successMessage'));
+    } catch (error) {
+      showAlert(t('save.errorTitle'), t('save.errorMessage'));
+    }
+  }, [showAlert, canvasRef]);
+
+  // Share function
+  const handleShare = useCallback(async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const uri = await captureRef(canvasRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+            
+      // Platform control
+      let shareOptions;
+      if (Platform.OS === 'ios') {
+        // iOS 
+        shareOptions = {
+          url: uri,
+          message: t('share.shareMessage')
+        };
+      } else {
+        // Android 
+        shareOptions = {
+          title: t('share.shareTitle'),
+          message: t('share.shareMessage'),
+          url: uri
+        };
+      }
+      
+      // share
+      const result = await Share.share(shareOptions);
+      
+      if (result.action === Share.sharedAction) {
+        showAlert(t('share.successTitle'), t('share.successMessage'));
+      } else if (result.action === Share.dismissedAction) {
+        showAlert(t('share.errorTitle'), t('share.errorMessage'));
+      }
+    } catch (error) {
+      showAlert(t('share.errorTitle'), t('share.errorMessage'));
+    }
+  }, [canvasRef, showAlert]);
+
+  // Clear function
+  const handleClearRequest = useCallback(() => {
+    showAlert(
+      t('clear.confirmTitle'),
+      t('clear.confirmMessage'),
+      [
+        {
+          text: t('clear.cancel'),
+          onPress: () => {},
+          style: 'default' as const
+        },
+        {
+          text: t('clear.confirm'),
+          onPress: clearCanvas,
+          style: 'default' as const
+        }
+      ]
+    );
+  }, [showAlert, clearCanvas]);
+
+  // Image Upload function
+  const handleAddImage = useCallback(async () => {
+    try {
+      // Galeri izinlerini iste
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        showAlert(
+          t('imageUpload.requestPermissionErrorTitle'), 
+          t('imageUpload.requestPermissionErrorMessage')
+        );
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setBackgroundImage(result.assets[0].uri);
+        setImageScale(1);
+        setImageFitMode('cover');
+        showAlert(t('imageUpload.successTitle'), t('imageUpload.successMessage'));
+      }
+    } catch (error) {
+      showAlert(
+        t('imageUpload.errorTitle'), 
+        t('imageUpload.errorMessage')
+      );
+    }
+  }, [showAlert]);
+
+  // Görüntü kontrolü için fonksiyonlar
+  const handleImageZoom = useCallback((scale: number) => {
+    setImageScale(scale);
+  }, []);
+
+  const toggleImageFitMode = useCallback(() => {
+    setImageFitMode(prevMode => prevMode === 'contain' ? 'cover' : 'contain');
+  }, []);
+
+  // Tool toggle function
+  const handleToggleTool = useCallback((isPencil: boolean, size?: number) => {    
+    if (size) {
+      setBrushSize(size);
+      
+      if (isPencil) {
+        updateRecentPencilSizes(size);
+      }
+    }
+    
+    // Color change (for eraser, white)
+    if (!isPencil) {
+      if (selectedColor !== '#FFFFFF') {
+        setLastPencilColor(selectedColor);
+      }
+      setSelectedColor('#FFFFFF');
+    } else {
+      if (selectedColor === '#FFFFFF') {
+        setSelectedColor(lastPencilColor);
+      }
+    }
+  }, [selectedColor, lastPencilColor]);
+  
+  // Update recent pencil sizes
+  const updateRecentPencilSizes = useCallback((newSize: number) => {
+    if (recentPencilSizes.includes(newSize)) {
+      const newSizes = [
+        newSize,
+        ...recentPencilSizes.filter(size => size !== newSize)
+      ].slice(0, 3);
+      
+      setRecentPencilSizes(newSizes);
+    } else {
+      const newSizes = [newSize, ...recentPencilSizes].slice(0, 3);
+      setRecentPencilSizes(newSizes);
+    }
+  }, [recentPencilSizes]);
+
+  // Color change function
+  const handleColorChange = useCallback((color: string) => {
+    setSelectedColor(color);
+    if (currentDrawMode === DRAW_MODES.PENCIL) {
+      setLastPencilColor(color);
+    }
+  }, [currentDrawMode]);
+
+  // Ai işleme fonksiyonu
+  const handleApplyAIStyle = useCallback(async (styleId: string) => {
+    try {
+      setIsAIProcessing(true);
+      
+      showAlertNoButtons(
+        t('ai.processingTitle'), 
+        t('ai.processingMessage', { style: getStyleName(styleId) })
+      );
+      
+      const result = await processAIStyle(canvasRef, styleId);
+      
+      if (result.success && result.imageUri) {
+        setAiProcessedImage(result.imageUri);
+        
+        showAlert(
+          t('ai.successTitle'), 
+          t('ai.successMessage'),
+          [
+            {
+              text: t('ok'),
+              onPress: () => setAiProcessedImage(null),
+              style: 'default' as const
+            }
+          ]
+        );
+      } else {
+        showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+      }
+    } catch (error) {
+      showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+    } finally {
+      setIsAIProcessing(false);
+    }
+  }, [showAlert, showAlertNoButtons, canvasRef]);
+
+  const saveAIImage = useCallback(async () => {
+    await handleSaveAIImage(
+      aiProcessedImage, 
+      showAlert,
+      () => setAiProcessedImage(null)
+    );
+  }, [aiProcessedImage, showAlert]);
+
+  const closeAIImage = useCallback(() => {
+    setAiProcessedImage(null);
+  }, []);
+
+  // Çizgilerin render edilmesi memoize edildi
+  const renderLines = useCallback(() => {
     return (
       <Svg style={StyleSheet.absoluteFill}>
         {lines.map((line, index) => {
-          // For single point drawing
+          // Tek nokta çizimi için
           if (line.points.length === 1) {
             const point = line.points[0];
             return (
@@ -247,213 +395,10 @@ export default function DrawingScreen() {
         ) : null}
       </Svg>
     );
-  };
+  }, [lines, currentLine, currentDrawMode, selectedColor, brushSize, createPathFromPoints]);
 
-  // Alert Helper Function
-  const showAlert = (title: string, message: string, buttons = [{ text: t('ok'), onPress: () => {}, style: 'default' as const }]) => {
-    setAlertConfig({
-      visible: true,
-      title,
-      message,
-      buttons,
-      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
-    });
-  };
-
-  const showAlertNoButtons = (title: string, message: string) => {
-    setAlertConfig({
-      visible: true,
-      title,
-      message,
-      buttons: [],
-      onDismiss: () => setAlertConfig(prev => ({ ...prev, visible: false }))
-    });
-  };
-
-  // Save function
-  const handleSave = async () => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      
-      if (status !== 'granted') {
-        showAlert(t('save.errorTitle'), t('save.errorMessage'));
-        return;
-      }
-      
-      showAlert(t('save.successTitle'), t('save.successMessage'));
-      
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const uri = await captureRef(canvasRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
-      
-      const asset = await MediaLibrary.createAssetAsync(uri);
-      showAlert(t('save.successTitle'), t('save.successMessage'));
-    } catch (error) {
-      showAlert(t('save.errorTitle'), t('save.errorMessage'));
-    }
-  };
-
-  // Share function
-  const handleShare = async () => {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const uri = await captureRef(canvasRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
-            
-      // Platform control
-      let shareOptions;
-      if (Platform.OS === 'ios') {
-        // iOS 
-        shareOptions = {
-          url: uri,
-          message: t('shareMessage')
-        };
-      } else {
-        // Android 
-        shareOptions = {
-          title: t('shareTitle'),
-          message: t('shareMessage'),
-          url: uri
-        };
-      }
-      
-      // share
-      const result = await Share.share(shareOptions);
-      
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          showAlert(t('share.successTitle'), t('share.successMessage'));
-        } else {
-          showAlert(t('share.successTitle'), t('share.successMessage'));
-        }
-      } else if (result.action === Share.dismissedAction) {
-        showAlert(t('share.errorTitle'), t('share.errorMessage'));
-      }
-    } catch (error) {
-      showAlert(t('share.errorTitle'), t('share.errorMessage'));
-    }
-  };
-
-  // Clear function
-  const handleClearRequest = () => {
-    showAlert(
-      t('clear.confirmTitle'),
-      t('clear.confirmMessage'),
-      [
-        {
-          text: t('clear.cancel'),
-          onPress: () => {},
-          style: 'default' as const
-        },
-        {
-          text: t('clear.confirm'),
-          onPress: clearCanvas,
-          style: 'default' as const
-        }
-      ]
-    );
-  };
-
-  // Image Upload function
-  const handleAddImage = async () => {
-    try {
-      // Galeri izinlerini iste
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        showAlert(
-          t('imageUpload.requestPermissionErrorTitle'), 
-          t('imageUpload.requestPermissionErrorMessage')
-        );
-        return;
-      }
-      
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 1,
-      });
-      
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setBackgroundImage(result.assets[0].uri);
-        setImageScale(1);
-        setImageFitMode('cover');
-        showAlert(t('imageUpload.successTitle'), t('imageUpload.successMessage'));
-      }
-    } catch (error) {
-      showAlert(
-        t('imageUpload.errorTitle'), 
-        t('imageUpload.errorMessage')
-      );
-    }
-  };
-
-  // Image zoom function
-  const handleImageZoom = (scale: number) => {
-    setImageScale(scale);
-  };
-
-  // Image fit mode toggle
-  const toggleImageFitMode = () => {
-    setImageFitMode(prevMode => prevMode === 'contain' ? 'cover' : 'contain');
-  };
-
-  // Tool toggle function
-  const handleToggleTool = (isPencil: boolean, size?: number) => {    
-    if (size) {
-      setBrushSize(size);
-      
-      if (isPencil) {
-        updateRecentPencilSizes(size);
-      }
-    }
-    
-    // Color change (for eraser, white)
-    if (!isPencil) {
-      if (selectedColor !== '#FFFFFF') {
-        setLastPencilColor(selectedColor);
-      }
-      setSelectedColor('#FFFFFF');
-    } else {
-      if (selectedColor === '#FFFFFF') {
-        setSelectedColor(lastPencilColor);
-      }
-    }
-  };
-  
-  // Update recent pencil sizes
-  const updateRecentPencilSizes = (newSize: number) => {
-    if (recentPencilSizes.includes(newSize)) {
-      const newSizes = [
-        newSize,
-        ...recentPencilSizes.filter(size => size !== newSize)
-      ].slice(0, 3);
-      
-      setRecentPencilSizes(newSizes);
-    } else {
-      const newSizes = [newSize, ...recentPencilSizes].slice(0, 3);
-      setRecentPencilSizes(newSizes);
-    }
-  };
-
-  // Color change function
-  const handleColorChange = (color: string) => {
-    setSelectedColor(color);
-    if (currentDrawMode === DRAW_MODES.PENCIL) {
-      setLastPencilColor(color);
-    }
-  };
-
-  // Render shapes function
-  const renderShapes = () => {
+  // Şekillerin render edilmesi memoize edildi
+  const renderShapes = useCallback(() => {
     const allShapes = [...shapes];
     if (currentShape) allShapes.push(currentShape);
     
@@ -469,6 +414,7 @@ export default function DrawingScreen() {
       const width = maxX - minX;
       const height = maxY - minY;
       
+      // Şekil tipine göre render
       switch (type) {
         case 'rectangle':
           return (
@@ -551,55 +497,141 @@ export default function DrawingScreen() {
           return null;
       }
     });
-  };
+  }, [shapes, currentShape]);
 
-  // Ai Generate function
-  const handleApplyAIStyle = async (styleId: string) => {
-    try {
-      setIsAIProcessing(true);
+  // PanResponder'ı useMemo ile optimize ediyoruz
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => {
+      const { locationX, locationY } = evt.nativeEvent;
       
-      showAlertNoButtons(
-        t('ai.processingTitle'), 
-        t('ai.processingMessage', { style: getStyleName(styleId) })
-      );
-      
-      const result = await processAIStyle(canvasRef, styleId);
-      
-      if (result.success && result.imageUri) {
-        setAiProcessedImage(result.imageUri);
-        
-        showAlert(
-          t('ai.successTitle'), 
-          t('ai.successMessage'),
-          [
-            {
-              text: t('ok'),
-              onPress: () => setAiProcessedImage(null),
-              style: 'default' as const
-            }
-          ]
-        );
-      } else {
-        showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
+      if (currentDrawMode === DRAW_MODES.SHAPE && selectedShape) {
+        setCurrentShape({
+          id: Date.now().toString(),
+          type: selectedShape,
+          x1: locationX,
+          y1: locationY,
+          x2: locationX,
+          y2: locationY,
+          color: selectedColor,
+          strokeWidth: brushSize
+        });
+      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
+        const newPoint = { x: locationX, y: locationY };
+        setCurrentLine([newPoint]);
       }
-    } catch (error) {
-      showAlert(t('ai.errorTitle'), t('ai.errorMessage'));
-    } finally {
-      setIsAIProcessing(false);
+    },
+    onPanResponderMove: (evt) => {
+      const { locationX, locationY } = evt.nativeEvent;
+      
+      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
+        setCurrentShape(prevShape => 
+          prevShape ? {
+            ...prevShape,
+            x2: locationX,
+            y2: locationY,
+          } : null
+        );
+      } else if (currentDrawMode === DRAW_MODES.PENCIL || currentDrawMode === DRAW_MODES.ERASER) {
+        setCurrentLine(prevLine => {
+          const newLine = [...prevLine, { x: locationX, y: locationY }];
+          return newLine;
+        });
+      }
+    },
+    onPanResponderRelease: () => {
+      if (currentDrawMode === DRAW_MODES.SHAPE && currentShape) {
+        setShapes(prevShapes => [...prevShapes, currentShape]);
+        setCurrentShape(null);
+      } else if (currentLine.length > 0) {
+        const pathString = currentLine.length > 1 
+          ? createPathFromPoints(currentLine)
+          : '';
+        
+        setLines(prevLines => [
+          ...prevLines, 
+          {
+            points: currentLine,
+            color: selectedColor,
+            thickness: brushSize,
+            tool: currentDrawMode,
+            path: pathString
+          }
+        ]);
+        
+        setCurrentLine([]);
+      }
     }
-  };
+  }), [currentDrawMode, selectedShape, currentShape, currentLine, selectedColor, brushSize, createPathFromPoints]);
 
-  const saveAIImage = async () => {
-    await handleSaveAIImage(
-      aiProcessedImage, 
-      showAlert,
-      () => setAiProcessedImage(null)
-    );
-  };
+  // Ana SVG bileşeni memoization
+  const mainSvgCanvas = useMemo(() => (
+    <Svg 
+      style={[
+        styles.svgCanvas,
+        (isAIProcessing || aiProcessedImage) && { opacity: 0 }
+      ]} 
+      width="100%" 
+      height="100%"
+    >
+      {renderLines()}
+      {renderShapes()}
+    </Svg>
+  ), [renderLines, renderShapes, isAIProcessing, aiProcessedImage]);
 
-  const closeAIImage = () => {
-    setAiProcessedImage(null);
-  };
+  // Arkaplan görüntü bileşeni
+  const backgroundImageComponent = useMemo(() => (
+    backgroundImage ? (
+      <Image 
+        source={{ uri: backgroundImage }} 
+        style={[
+          styles.backgroundImage,
+          { transform: [{ scale: imageScale }] }
+        ]}
+        resizeMode={imageFitMode as ImageResizeMode}
+      />
+    ) : null
+  ), [backgroundImage, imageScale, imageFitMode]);
+
+  // AI işlenmiş görüntü bileşeni
+  const aiProcessedImageComponent = useMemo(() => (
+    aiProcessedImage ? (
+      <Image 
+        source={{ uri: aiProcessedImage }} 
+        style={styles.aiProcessedImage}
+        resizeMode="contain"
+      />
+    ) : null
+  ), [aiProcessedImage]);
+
+  // Splash screen
+  useEffect(() => {
+    async function prepareApp() {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (e) {
+        console.warn('App loading error', e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepareApp();
+  }, []);
+
+  useEffect(() => {
+    async function hideSplashScreen() {
+      if (appIsReady) {
+        await SplashScreenModule.hideAsync();
+      }
+    }
+    
+    hideSplashScreen();
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -611,39 +643,12 @@ export default function DrawingScreen() {
           renderToHardwareTextureAndroid={true}
         >
           {/* Background image */}
-          {backgroundImage && (
-            <Image 
-              source={{ uri: backgroundImage }} 
-              style={[
-                styles.backgroundImage,
-                { 
-                  transform: [{ scale: imageScale }],
-                }
-              ]}
-              resizeMode={imageFitMode as ImageResizeMode}
-            />
-          )}
+          {backgroundImageComponent}
           
           {/* AI işlenmiş görüntü (varsa) */}
-          {aiProcessedImage && (
-            <Image 
-              source={{ uri: aiProcessedImage }} 
-              style={styles.aiProcessedImage}
-              resizeMode="contain"
-            />
-          )}
+          {aiProcessedImageComponent}
           
-          <Svg 
-            style={[
-              styles.svgCanvas,
-              (isAIProcessing || aiProcessedImage) && { opacity: 0 }
-            ]} 
-            width="100%" 
-            height="100%"
-          >
-            {renderLines()}
-            {renderShapes()}
-          </Svg>
+          {mainSvgCanvas}
         </View>
       </View>
       
@@ -720,54 +725,6 @@ const styles = StyleSheet.create({
     height: '100%',
     elevation: 0
   },
-  toggleButton: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    marginLeft: -45,
-    width: 90,
-    height: 40,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    backgroundColor: '#FFC107',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
-    zIndex: 1000,
-    borderWidth: 2,
-    borderColor: '#FFB300',
-    borderBottomWidth: 0,
-  },
-  toggleButtonText: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
-  },
-  lineContainer: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: '100%',
-    height: '100%',
-  },
-  temporaryShapeContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-    pointerEvents: 'none',
-  },
   svgCanvas: {
     position: 'absolute',
     left: 0,
@@ -814,23 +771,5 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     zIndex: 10, // SVG üzerinde göster
-  },
-  aiProcessingContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -100 }, { translateY: -50 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  aiProcessingText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
   },
 }); 
